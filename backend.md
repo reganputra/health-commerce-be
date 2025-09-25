@@ -3,6 +3,15 @@
 
 ## Requirements Backend
 
+### Tech Stack
+- Golang
+- GORM + MySQL
+- Gin
+- JWT
+- Unidoc to generate PDF
+- Stripe for simulate payment
+- Cloudinary for image storage
+
 ### Functional Requirements
 1. Auth
 - Register (Visitor → Customer)
@@ -33,7 +42,7 @@
 ### ERD (Entity Relationship Diagram)
 Users
 
-| Field           | Type                  | Keterangan     |
+| Field           | Type                  | Explanation    |
 | --------------- | --------------------- |----------------|
 | id (PK)         | UUID / INT            | Primary key    |
 | username        | VARCHAR               | Unique         |
@@ -53,7 +62,7 @@ Users
 Categories
 
 
-| Field       | Type      | Keterangan    |
+| Field       | Type      | Explanation   |
 | ----------- | --------- |---------------|
 | id (PK)     | INT       | Primary key   |
 | name        | VARCHAR   | category name |
@@ -63,8 +72,8 @@ Categories
 
 Products
 
-| Field        | Type      | Keterangan          |
-| ------------ | --------- |---------------------|
+| Field        | Type      | Explanation         |
+|--------------| --------- |---------------------|
 | id (PK)      | INT       | Primary key         |
 | category\_id | INT (FK)  | related to category |
 | name         | VARCHAR   | product name        |
@@ -73,11 +82,11 @@ Products
 | stock        | INT       | stock               |
 | created\_at  | TIMESTAMP |                     |
 | updated\_at  | TIMESTAMP |                     |
-
+| images_url   | VARCHAR   | images of product   |
 
 Carts
 
-| Field       | Type      | Keterangan       |
+| Field       | Type      | Explanation      |
 | ----------- | --------- |------------------|
 | id (PK)     | INT       | Primary key      |
 | user\_id FK | INT       | related to users |
@@ -86,7 +95,7 @@ Carts
 
 Cart Items
 
-| Field          | Type | Keterangan          |
+| Field          | Type | Explanation         |
 | -------------- | ---- |---------------------|
 | id (PK)        | INT  | Primary key         |
 | cart\_id FK    | INT  | related to carts    |
@@ -96,20 +105,20 @@ Cart Items
 
 Orders
 
-| Field           | Type                                    | Keterangan      |
-| --------------- | --------------------------------------- |-----------------|
-| id (PK)         | INT                                     | Primary key     |
+| Field           | Type                                    | Explanation      |
+| --------------- | --------------------------------------- |------------------|
+| id (PK)         | INT                                     | Primary key      |
 | user\_id FK     | INT                                     | related to users |
-| status          | ENUM(pending, paid, shipped, cancelled) | order status    |
-| total\_price    | DECIMAL                                 | total price     |
-| payment\_method | ENUM(paypal, debit, cc, cod)            | payment method  |
-| bank\_name      | VARCHAR NULL                            | optional        |
-| created\_at     | TIMESTAMP                               |                 |
+| status          | ENUM(pending, paid, shipped, cancelled) | order status     |
+| total\_price    | DECIMAL                                 | total price      |
+| payment\_method | ENUM(paypal, debit, cc, cod)            | payment method   |
+| bank\_name      | VARCHAR NULL                            | optional         |
+| created\_at     | TIMESTAMP                               |                  |
 
 
 Oder Items
 
-| Field          | Type    | Keterangan         |
+| Field          | Type    | Explanation        |
 | -------------- | ------- |--------------------|
 | id (PK)        | INT     | Primary key        |
 | order\_id FK   | INT     | related to orders  |
@@ -120,7 +129,7 @@ Oder Items
 
 Feedbacks
 
-| Field          | Type      | Keterangan         |
+| Field          | Type      | Explanation        |
 | -------------- | --------- |--------------------|
 | id (PK)        | INT       | Primary key        |
 | user\_id FK    | INT       | related to users   |

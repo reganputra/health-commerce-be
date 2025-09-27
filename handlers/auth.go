@@ -1,18 +1,28 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
 
+	"health-store/models"
+	"health-store/service"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
-	"health-store/models"
-	"gorm.io/gorm"
 )
 
-var jwtKey = []byte(os.Getenv("JWT_SECRET_KEY"))
+var jwtKey = []byte(getJWTSecret())
+
+func getJWTSecret() string {
+	secret := os.Getenv("JWT_SECRET_KEY")
+	if secret == "" {
+		// Fallback to a more secure default secret
+		secret = "your-super-secret-jwt-key-change-this-in-production-2024"
+	}
+	return secret
+}
 
 type Claims struct {
 	Username string `json:"username"`
@@ -20,60 +30,60 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func Register(db *gorm.DB) gin.HandlerFunc {
+func Register(userService *service.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var user models.User
-		if err := c.ShouldBindJSON(&user); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		var req models.UserRegisterRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
 			return
 		}
 
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+		// Validate the request
+		if err := models.ValidateStruct(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Validation failed: " + err.Error()})
+			return
+		}
+
+		// Register user through service
+		user, err := userService.RegisterUser(req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
-			return
-		}
-		user.Password = string(hashedPassword)
-
-		// Default role to "customer"
-		if user.Role == "" {
-			user.Role = "customer"
-		}
-
-		if err := db.Create(&user).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "User registered successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "User registered successfully", "user_id": user.ID})
 	}
 }
 
-func Login(db *gorm.DB) gin.HandlerFunc {
+func Login(userService *service.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var creds models.User
-		if err := c.ShouldBindJSON(&creds); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		var req models.UserLoginRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
 			return
 		}
 
-		var user models.User
-		if err := db.Where("username = ?", creds.Username).First(&user).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		// Validate the request
+		if err := models.ValidateStruct(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Validation failed: " + err.Error()})
 			return
 		}
 
-		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(creds.Password)); err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		// Authenticate user through service
+		user, err := userService.AuthenticateUser(req)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 
-		expirationTime := time.Now().Add(5 * time.Minute)
+		expirationTime := time.Now().Add(24 * time.Hour) // Extended to 24 hours for better UX
 		claims := &Claims{
-			Username: creds.Username,
+			Username: req.Username,
 			Role:     user.Role,
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(expirationTime),
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+				Subject:   fmt.Sprintf("%d", user.ID),
 			},
 		}
 
@@ -84,6 +94,11 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"token": tokenString})
+		c.JSON(http.StatusOK, gin.H{"token": tokenString, "user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"email":    user.Email,
+			"role":     user.Role,
+		}})
 	}
 }

@@ -5,13 +5,23 @@ import (
 	"os"
 	"strings"
 
+	"health-store/models"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
-	"health-store/models"
 )
 
-var jwtKey = []byte(os.Getenv("JWT_SECRET_KEY"))
+var jwtKey = []byte(getJWTSecret())
+
+func getJWTSecret() string {
+	secret := os.Getenv("JWT_SECRET_KEY")
+	if secret == "" {
+		// Fallback to a more secure default secret
+		secret = "your-super-secret-jwt-key-change-this-in-production-2024"
+	}
+	return secret
+}
 
 type Claims struct {
 	Username string `json:"username"`

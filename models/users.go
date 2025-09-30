@@ -34,6 +34,17 @@ type UserRegisterRequest struct {
 	ContactNumber string `json:"contact_number" validate:"required,min=10,max=15"`
 }
 
+type UserUpdateRequest struct {
+	Username      *string `json:"username,omitempty"`
+	Email         *string `json:"email,omitempty"`
+	Dob           *string `json:"dob,omitempty"`
+	Gender        *string `json:"gender,omitempty"`
+	Address       *string `json:"address,omitempty"`
+	City          *string `json:"city,omitempty"`
+	ContactNumber *string `json:"contact_number,omitempty"`
+	Role          *string `json:"role,omitempty"`
+}
+
 // UserLoginRequest represents the request payload for user login
 type UserLoginRequest struct {
 	Username string `json:"username" validate:"required"`

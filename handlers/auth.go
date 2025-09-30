@@ -18,7 +18,7 @@ var jwtKey = []byte(getJWTSecret())
 func getJWTSecret() string {
 	secret := os.Getenv("JWT_SECRET_KEY")
 	if secret == "" {
-		// Fallback to a more secure default secret
+		// default secret
 		secret = "your-super-secret-jwt-key-change-this-in-production-2024"
 	}
 	return secret
@@ -76,7 +76,7 @@ func Login(userService *service.UserService) gin.HandlerFunc {
 			return
 		}
 
-		expirationTime := time.Now().Add(24 * time.Hour) // Extended to 24 hours for better UX
+		expirationTime := time.Now().Add(24 * time.Hour) // Extended to 24
 		claims := &Claims{
 			Username: req.Username,
 			Role:     user.Role,

@@ -85,7 +85,7 @@ func (s *ProductService) UpdateProduct(id uint, req models.ProductUpdateRequest)
 	if req.Price != 0 {
 		product.Price = req.Price
 	}
-	if req.Stock != 0 || req.Stock == 0 { // Allow setting stock to 0
+	if req.Stock != 0 {
 		product.Stock = req.Stock
 	}
 	if req.ImageURL != "" {
@@ -102,6 +102,11 @@ func (s *ProductService) UpdateProduct(id uint, req models.ProductUpdateRequest)
 
 // DeleteProduct deletes a product
 func (s *ProductService) DeleteProduct(id uint) error {
+	_, err := s.productRepo.FindByID(id)
+	if err != nil {
+		return errors.New("product is not exist or has been deleted")
+	}
+
 	return s.productRepo.Delete(id)
 }
 

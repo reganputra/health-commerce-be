@@ -2,13 +2,15 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
+
+	"health-store/models"
+	"health-store/service"
 
 	"github.com/gin-gonic/gin"
-	"health-store/models"
-	"gorm.io/gorm"
 )
 
-func CreateCategory(db *gorm.DB) gin.HandlerFunc {
+func CreateCategory(categoryService *service.CategoryService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var category models.Category
 		if err := c.ShouldBindJSON(&category); err != nil {
@@ -16,7 +18,8 @@ func CreateCategory(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		if err := db.Create(&category).Error; err != nil {
+		err := categoryService.CreateCategory(&category)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create category"})
 			return
 		}
@@ -25,10 +28,10 @@ func CreateCategory(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func GetCategories(db *gorm.DB) gin.HandlerFunc {
+func GetCategories(categoryService *service.CategoryService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var categories []models.Category
-		if err := db.Find(&categories).Error; err != nil {
+		categories, err := categoryService.GetAllCategories()
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve categories"})
 			return
 		}
@@ -36,11 +39,17 @@ func GetCategories(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func GetCategory(db *gorm.DB) gin.HandlerFunc {
+func GetCategory(categoryService *service.CategoryService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		var category models.Category
-		if err := db.First(&category, id).Error; err != nil {
+		categoryID, err := strconv.Atoi(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+			return
+		}
+
+		category, err := categoryService.GetCategoryByID(uint(categoryID))
+		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
 			return
 		}
@@ -48,41 +57,53 @@ func GetCategory(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func UpdateCategory(db *gorm.DB) gin.HandlerFunc {
+func UpdateCategory(categoryService *service.CategoryService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		var category models.Category
-		if err := db.First(&category, id).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
+		categoryID, err := strconv.Atoi(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
 			return
 		}
 
-		if err := c.ShouldBindJSON(&category); err != nil {
+		var req models.CategoryUpdateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		if err := db.Save(&category).Error; err != nil {
+		// Validate the request
+		if err := models.ValidateStruct(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Validation failed: " + err.Error()})
+			return
+		}
+
+		// Update the category through service
+		category, err := categoryService.UpdateCategory(uint(categoryID), req)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update category"})
 			return
 		}
+
 		c.JSON(http.StatusOK, category)
 	}
 }
 
-func DeleteCategory(db *gorm.DB) gin.HandlerFunc {
+func DeleteCategory(categoryService *service.CategoryService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		var category models.Category
-		if err := db.First(&category, id).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
+		categoryID, err := strconv.Atoi(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
 			return
 		}
 
-		if err := db.Delete(&category).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete category"})
+		err = categoryService.DeleteCategory(uint(categoryID))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete category or category is not exist"})
 			return
 		}
+
 		c.JSON(http.StatusOK, gin.H{"message": "Category deleted successfully"})
 	}
 }

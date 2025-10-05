@@ -2,30 +2,40 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
+
+	"health-store/models"
+	"health-store/service"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
-	"health-store/models"
 )
 
-func GetCart(db *gorm.DB) gin.HandlerFunc {
+func GetCart(cartService *service.CartService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("userID").(uint)
-		var cart models.Cart
-		if err := db.Preload("CartItems.Product").Where("user_id = ?", userID).First(&cart).Error; err != nil {
-			// If cart is not found, it might not be an error. Return an empty cart.
-			if err == gorm.ErrRecordNotFound {
-				c.JSON(http.StatusOK, gin.H{"cart_items": []models.CartItem{}})
-				return
-			}
+		cart, err := cartService.GetCartByUserID(userID)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve cart"})
 			return
 		}
-		c.JSON(http.StatusOK, cart)
+
+		// Calculate total
+		total := 0.0
+		for _, item := range cart.CartItems {
+			total += item.Product.Price * float64(item.Quantity)
+		}
+
+		// Add total to response
+		response := gin.H{
+			"cart":  cart,
+			"total": total,
+		}
+
+		c.JSON(http.StatusOK, response)
 	}
 }
 
-func AddToCart(db *gorm.DB) gin.HandlerFunc {
+func AddToCart(cartService *service.CartService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("userID").(uint)
 		var cartItem models.CartItem
@@ -34,46 +44,29 @@ func AddToCart(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		var cart models.Cart
-		if err := db.Where("user_id = ?", userID).FirstOrCreate(&cart, models.Cart{UserID: userID}).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get or create cart"})
+		err := cartService.AddToCart(userID, cartItem)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		cartItem.CartID = cart.ID
-		if err := db.Create(&cartItem).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add item to cart"})
-			return
-		}
-
-		c.JSON(http.StatusOK, cartItem)
+		c.JSON(http.StatusOK, gin.H{"message": "Item added to cart successfully"})
 	}
 }
 
-func RemoveFromCart(db *gorm.DB) gin.HandlerFunc {
+func RemoveFromCart(cartService *service.CartService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("userID").(uint)
-		cartItemID := c.Param("id")
-
-		var cartItem models.CartItem
-		if err := db.First(&cartItem, cartItemID).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Cart item not found"})
+		cartItemIDStr := c.Param("id")
+		cartItemID, err := strconv.Atoi(cartItemIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid cart item ID"})
 			return
 		}
 
-		var cart models.Cart
-		if err := db.Where("user_id = ?", userID).First(&cart).Error; err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Cart not found for user"})
-			return
-		}
-
-		if cartItem.CartID != cart.ID {
-			c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to remove this item"})
-			return
-		}
-
-		if err := db.Delete(&cartItem).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove item from cart"})
+		err = cartService.RemoveFromCart(uint(cartItemID), userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "Item removed from cart successfully"})

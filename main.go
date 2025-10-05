@@ -129,8 +129,8 @@ func main() {
 	}
 
 	cartRoutes := r.Group("/cart")
-	cartRoutes.Use(middleware.RequirePermission(models.PermissionReadCart))
 	cartRoutes.Use(middleware.AuthMiddleware(DB, "customer", "admin"))
+	cartRoutes.Use(middleware.RequirePermission(models.PermissionReadCart))
 	{
 		cartRoutes.GET("/", handlers.GetCart(cartService))
 		cartRoutes.POST("/", middleware.RequirePermission(models.PermissionUpdateCart), handlers.AddToCart(cartService))

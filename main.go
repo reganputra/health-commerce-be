@@ -141,6 +141,7 @@ func main() {
 	orderRoutes.Use(middleware.AuthMiddleware(DB, "customer", "admin"))
 	{
 		orderRoutes.POST("/", middleware.RequirePermission(models.PermissionCreateOrder), handlers.PlaceOrder(orderService))
+		orderRoutes.GET("/", handlers.GetUserOrders(orderService)) // Customer order history
 		orderRoutes.GET("/:id", middleware.RequirePermission(models.PermissionReadOrder), handlers.GetOrder(orderService))
 		orderRoutes.PUT("/:id/cancel", middleware.RequirePermission(models.PermissionUpdateOrder), handlers.CancelOrder(orderService))
 	}

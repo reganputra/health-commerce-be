@@ -36,6 +36,8 @@ type OrderRepositoryInterface interface {
 	Update(order *models.Order) error
 	CreateOrderItem(item *models.OrderItem) error
 	GetOrderStatistics() (int64, error)
+	GetDB() interface{} // For transactions
+	FindOrderItemsByOrderID(orderID uint) ([]models.OrderItem, error)
 }
 
 // CartRepositoryInterface defines methods for cart repository

@@ -5,15 +5,16 @@ import (
 )
 
 type Order struct {
-	ID            uint      `gorm:"primaryKey" json:"id"`
-	UserID        uint      `json:"user_id"`
-	User          User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Status        string    `json:"status"`
-	TotalPrice    float64   `json:"total_price"`
-	PaymentMethod string    `json:"payment_method"`
-	BankName      string    `json:"bank_name,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            uint        `gorm:"primaryKey" json:"id"`
+	UserID        uint        `gorm:"column:user_id;not null" json:"user_id"`
+	User          User        `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	OrderItems    []OrderItem `gorm:"foreignKey:OrderID" json:"items,omitempty"`
+	Status        string      `gorm:"column:status;not null" json:"status"`
+	TotalPrice    float64     `gorm:"column:total_price;not null" json:"total_price"`
+	PaymentMethod string      `gorm:"column:payment_method;not null" json:"payment_method"`
+	BankName      string      `gorm:"column:bank_name" json:"bank_name,omitempty"`
+	CreatedAt     time.Time   `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt     time.Time   `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
 // PlaceOrderRequest represents the request payload for placing an order

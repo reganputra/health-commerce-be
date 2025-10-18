@@ -2,60 +2,105 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
+
+	"health-store/models"
+	"health-store/service"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
-	"health-store/models"
 )
 
-func PlaceOrder(db *gorm.DB) gin.HandlerFunc {
+func PlaceOrder(orderService *service.OrderService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("userID").(uint)
 
-		var cart models.Cart
-		if err := db.Preload("CartItems.Product").Where("user_id = ?", userID).First(&cart).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Cart not found or is empty"})
+		var req models.PlaceOrderRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
 			return
 		}
 
-		if len(cart.CartItems) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot place an order with an empty cart"})
+		// Validate the request
+		if err := models.ValidateStruct(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Validation failed: " + err.Error()})
 			return
 		}
 
-		var totalPrice float64
-		var orderItems []models.OrderItem
-		for _, item := range cart.CartItems {
-			totalPrice += item.Product.Price * float64(item.Quantity)
-			orderItems = append(orderItems, models.OrderItem{
-				ProductID: item.ProductID,
-				Quantity:  item.Quantity,
-				Price:     item.Product.Price,
-			})
-		}
-
-		order := models.Order{
-			UserID:     userID,
-			Status:     "pending",
-			TotalPrice: totalPrice,
-			OrderItems: orderItems,
-		}
-
-		// Use a transaction to ensure atomicity
-		err := db.Transaction(func(tx *gorm.DB) error {
-			if err := tx.Create(&order).Error; err != nil {
-				return err
-			}
-
-			if err := tx.Where("cart_id = ?", cart.ID).Delete(&models.CartItem{}).Error; err != nil {
-				return err
-			}
-
-			return nil
-		})
-
+		order, err := orderService.PlaceOrder(userID, req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to place order"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Order placed successfully", "order": order})
+	}
+}
+
+// UpdateOrderStatus allows admin to update order status
+func UpdateOrderStatus(orderService *service.OrderService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		orderIDStr := c.Param("id")
+		orderID, err := strconv.Atoi(orderIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order ID"})
+			return
+		}
+
+		var req models.OrderStatusUpdateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
+			return
+		}
+
+		// Validate the request
+		if err := models.ValidateStruct(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Validation failed: " + err.Error()})
+			return
+		}
+
+		err = orderService.UpdateOrderStatus(uint(orderID), req.Status)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Order status updated successfully"})
+	}
+}
+
+// GetAllOrders allows admin to view all orders
+func GetAllOrders(orderService *service.OrderService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		orders, err := orderService.GetAllOrders()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve orders"})
+			return
+		}
+		c.JSON(http.StatusOK, orders)
+	}
+}
+
+// GetOrder allows viewing a specific order
+func GetOrder(orderService *service.OrderService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.MustGet("userID").(uint)
+		orderIDStr := c.Param("id")
+		orderID, err := strconv.Atoi(orderIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order ID"})
+			return
+		}
+
+		order, err := orderService.GetOrderByID(uint(orderID))
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+			return
+		}
+
+		// Check if user owns the order or is admin
+		userRole := c.MustGet("userRole").(string)
+		if order.UserID != userID && userRole != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to view this order"})
 			return
 		}
 
@@ -63,33 +108,39 @@ func PlaceOrder(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func CancelOrder(db *gorm.DB) gin.HandlerFunc {
+// GetUserOrders allows customers to view their order history
+func GetUserOrders(orderService *service.OrderService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("userID").(uint)
-		orderID := c.Param("id")
 
-		var order models.Order
-		if err := db.First(&order, orderID).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		orders, err := orderService.GetOrdersByUserID(userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve orders"})
 			return
 		}
 
-		if order.UserID != userID {
-			c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to cancel this order"})
+		c.JSON(http.StatusOK, gin.H{
+			"orders": orders,
+			"count":  len(orders),
+		})
+	}
+}
+
+func CancelOrder(orderService *service.OrderService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.MustGet("userID").(uint)
+		orderIDStr := c.Param("id")
+		orderID, err := strconv.Atoi(orderIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order ID"})
 			return
 		}
 
-		if order.Status == "shipped" || order.Status == "cancelled" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Cannot cancel an order that has been shipped or already cancelled"})
+		err = orderService.CancelOrder(uint(orderID), userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-
-		order.Status = "cancelled"
-
-		if err := db.Save(&order).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cancel order"})
-			return
-		}
-		c.JSON(http.StatusOK, order)
+		c.JSON(http.StatusOK, gin.H{"message": "Order cancelled successfully"})
 	}
 }

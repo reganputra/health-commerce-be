@@ -58,19 +58,27 @@ func AuthMiddleware(db *gorm.DB, allowedRoles ...string) gin.HandlerFunc {
 			return
 		}
 
+		// Set user info in context
 		c.Set("userID", user.ID)
-		c.Set("userRole", user.Role)
 
+		// Handle missing role - default to customer if empty
+		userRole := user.Role
+		if userRole == "" {
+			userRole = "customer" // Default role
+		}
+		c.Set("userRole", userRole)
+
+		// Check authorization
 		authorized := false
 		for _, role := range allowedRoles {
-			if user.Role == role {
+			if userRole == role {
 				authorized = true
 				break
 			}
 		}
 
 		if !authorized {
-			c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to access this resource"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "User role not found or not authorized"})
 			c.Abort()
 			return
 		}

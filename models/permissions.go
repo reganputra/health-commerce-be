@@ -55,7 +55,7 @@ var RolePermissions = map[string][]Permission{
 	"customer": {
 		// Customer has limited permissions
 		PermissionReadProduct, PermissionReadCategory,
-		PermissionCreateOrder, PermissionReadOrder,
+		PermissionCreateOrder, PermissionReadOrder, PermissionUpdateOrder,
 		PermissionReadCart, PermissionUpdateCart,
 		PermissionCreateFeedback,
 	},

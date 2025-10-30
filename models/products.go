@@ -36,3 +36,11 @@ type ProductUpdateRequest struct {
 	Stock       int     `json:"stock,omitempty" validate:"omitempty,gte=0"`
 	ImageURL    string  `json:"image_url,omitempty" validate:"omitempty,url"`
 }
+
+// TopProduct represents a top-selling product for reporting
+type TopProduct struct {
+	ProductID    uint    `json:"product_id"`
+	ProductName  string  `json:"product_name"`
+	TotalSold    int64   `json:"total_sold"`
+	TotalRevenue float64 `json:"total_revenue"`
+}

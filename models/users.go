@@ -61,3 +61,12 @@ func init() {
 func ValidateStruct(s interface{}) error {
 	return validate.Struct(s)
 }
+
+// TopCustomer represents a top customer for reporting
+type TopCustomer struct {
+	UserID       uint    `json:"user_id"`
+	Username     string  `json:"username"`
+	Email        string  `json:"email"`
+	OrderCount   int64   `json:"order_count"`
+	TotalSpent   float64 `json:"total_spent"`
+}

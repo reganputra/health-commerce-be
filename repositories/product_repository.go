@@ -139,3 +139,27 @@ func (r *ProductRepository) FindByIDsMap(ids []uint) (map[uint]*models.Product, 
 	}
 	return productMap, nil
 }
+
+// GetTopSellingProducts returns the top-selling products based on order items
+func (r *ProductRepository) GetTopSellingProducts(limit int) ([]models.TopProduct, error) {
+	var topProducts []models.TopProduct
+
+	err := r.db.Table("order_items").
+		Select("products.id as product_id, products.name as product_name, SUM(order_items.quantity) as total_sold, SUM(order_items.quantity * order_items.price) as total_revenue").
+		Joins("JOIN products ON products.id = order_items.product_id").
+		Joins("JOIN orders ON orders.id = order_items.order_id").
+		Where("orders.status != ?", "cancelled").
+		Group("products.id, products.name").
+		Order("total_sold DESC").
+		Limit(limit).
+		Scan(&topProducts).Error
+
+	return topProducts, err
+}
+
+// GetProductCount returns the total count of products
+func (r *ProductRepository) GetProductCount() (int64, error) {
+	var count int64
+	err := r.db.Model(&models.Product{}).Count(&count).Error
+	return count, err
+}

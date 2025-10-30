@@ -3,17 +3,18 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"health-store/config"
-	"health-store/handlers"
-	"health-store/middleware"
 	"health-store/models"
 	"health-store/repositories"
+	"health-store/routes"
 	"health-store/service"
 	"health-store/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/unidoc/unipdf/v3/common/license"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -25,6 +26,19 @@ func main() {
 	err := godotenv.Load()
 	if err != nil {
 		utils.Warn("Error loading .env file, using environment variables")
+	}
+
+	// Initialize UniDoc PDF License (optional, for removing watermarks)
+	if licenseKey := os.Getenv("UNIDOC_LICENSE_KEY"); licenseKey != "" {
+		err := license.SetMeteredKey(licenseKey)
+		if err != nil {
+			log.Printf("Warning: Failed to set UniDoc license key: %v", err)
+		} else {
+			log.Println("UniDoc license key successfully set")
+		}
+	} else {
+		log.Println("Warning: UNIDOC_LICENSE_KEY not set. PDFs will have watermarks or may fail to generate.")
+		log.Println("To remove watermarks, set UNIDOC_LICENSE_KEY environment variable or get a free trial at: https://unidoc.io")
 	}
 
 	// Load configuration
@@ -78,92 +92,21 @@ func main() {
 	feedbackService := service.NewFeedbackService(feedbackRepo)
 	reportService := service.NewReportService(orderRepo, productRepo, userRepo)
 
+	// Initialize Gin router
 	r := gin.Default()
 
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-
-	// Public routes for visitors
-	publicRoutes := r.Group("/api")
-	{
-		publicRoutes.GET("/products", handlers.GetProducts(productService))
-		publicRoutes.GET("/products/:id", handlers.GetProduct(productService))
-		publicRoutes.GET("/categories", handlers.GetCategories(categoryService))
-		publicRoutes.GET("/categories/:id", handlers.GetCategory(categoryService))
-	}
-
-	authRoutes := r.Group("/auth")
-	{
-		authRoutes.POST("/register", handlers.Register(userService))
-		authRoutes.POST("/login", handlers.Login(userService))
-	}
-
-	adminRoutes := r.Group("/admin")
-	adminRoutes.Use(middleware.AuthMiddleware(DB, "admin"))
-	{
-		// User management
-		adminRoutes.GET("/users", middleware.RequirePermission(models.PermissionReadUser), handlers.GetUsers(userService))
-		adminRoutes.GET("/users/:id", middleware.RequirePermission(models.PermissionReadUser), handlers.GetUser(userService))
-		adminRoutes.PUT("/users/:id", middleware.RequirePermission(models.PermissionUpdateUser), handlers.UpdateUser(userService))
-		adminRoutes.DELETE("/users/:id", middleware.RequirePermission(models.PermissionDeleteUser), handlers.DeleteUser(userService))
-
-		// Product management
-		adminRoutes.POST("/products", middleware.RequirePermission(models.PermissionCreateProduct), handlers.CreateProduct(productService))
-		adminRoutes.GET("/products", middleware.RequirePermission(models.PermissionReadProduct), handlers.GetProducts(productService))
-		adminRoutes.GET("/products/:id", middleware.RequirePermission(models.PermissionReadProduct), handlers.GetProduct(productService))
-		adminRoutes.PUT("/products/:id", middleware.RequirePermission(models.PermissionUpdateProduct), handlers.UpdateProduct(productService))
-		adminRoutes.DELETE("/products/:id", middleware.RequirePermission(models.PermissionDeleteProduct), handlers.DeleteProduct(productService))
-
-		// Category management
-		adminRoutes.POST("/categories", middleware.RequirePermission(models.PermissionCreateCategory), handlers.CreateCategory(categoryService))
-		adminRoutes.GET("/categories", middleware.RequirePermission(models.PermissionReadCategory), handlers.GetCategories(categoryService))
-		adminRoutes.GET("/categories/:id", middleware.RequirePermission(models.PermissionReadCategory), handlers.GetCategory(categoryService))
-		adminRoutes.PUT("/categories/:id", middleware.RequirePermission(models.PermissionUpdateCategory), handlers.UpdateCategory(categoryService))
-		adminRoutes.DELETE("/categories/:id", middleware.RequirePermission(models.PermissionDeleteCategory), handlers.DeleteCategory(categoryService))
-
-		// Reports
-		adminRoutes.GET("/report", middleware.RequirePermission(models.PermissionReadReport), handlers.GenerateReport(reportService))
-	}
-
-	cartRoutes := r.Group("/cart")
-	cartRoutes.Use(middleware.AuthMiddleware(DB, "customer", "admin"))
-	cartRoutes.Use(middleware.RequirePermission(models.PermissionReadCart))
-	{
-		cartRoutes.GET("/", handlers.GetCart(cartService))
-		cartRoutes.POST("/", middleware.RequirePermission(models.PermissionUpdateCart), handlers.AddToCart(cartService))
-		cartRoutes.DELETE("/:id", middleware.RequirePermission(models.PermissionUpdateCart), handlers.RemoveFromCart(cartService))
-	}
-
-	orderRoutes := r.Group("/orders")
-	orderRoutes.Use(middleware.AuthMiddleware(DB, "customer", "admin"))
-	{
-		orderRoutes.POST("/", middleware.RequirePermission(models.PermissionCreateOrder), handlers.PlaceOrder(orderService))
-		orderRoutes.GET("/", handlers.GetUserOrders(orderService)) // Customer order history
-		orderRoutes.GET("/:id", middleware.RequirePermission(models.PermissionReadOrder), handlers.GetOrder(orderService))
-		orderRoutes.PUT("/:id/cancel", middleware.RequirePermission(models.PermissionUpdateOrder), handlers.CancelOrder(orderService))
-	}
-
-	adminOrderRoutes := r.Group("/admin/orders")
-	adminOrderRoutes.Use(middleware.AuthMiddleware(DB, "admin"))
-	adminOrderRoutes.Use(middleware.RequirePermission(models.PermissionReadOrder))
-	{
-		adminOrderRoutes.GET("/", handlers.GetAllOrders(orderService))
-		adminOrderRoutes.PUT("/:id/status", middleware.RequirePermission(models.PermissionUpdateOrder), handlers.UpdateOrderStatus(orderService))
-	}
-
-	feedbackRoutes := r.Group("/feedback")
-	feedbackRoutes.Use(middleware.AuthMiddleware(DB, "customer", "admin"))
-	feedbackRoutes.Use(middleware.RequirePermission(models.PermissionCreateFeedback))
-	{
-		feedbackRoutes.POST("/", handlers.GiveFeedback(feedbackService))
-	}
-
-	r.NoRoute(func(c *gin.Context) {
-		c.JSON(404, gin.H{"code": "PAGE_NOT_FOUND", "message": "Page not found"})
-	})
+	// Setup all routes
+	routes.SetupRoutes(
+		r,
+		DB,
+		userService,
+		productService,
+		categoryService,
+		orderService,
+		cartService,
+		feedbackService,
+		reportService,
+	)
 
 	fmt.Printf("Starting server on port %s...\n", cfg.Server.Port)
 	if err := r.Run(":" + cfg.Server.Port); err != nil {

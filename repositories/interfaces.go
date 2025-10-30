@@ -13,6 +13,8 @@ type UserRepositoryInterface interface {
 	FindAll() ([]models.User, error)
 	ExistsByUsername(username string) (bool, error)
 	ExistsByEmail(email string) (bool, error)
+	// Report-specific methods
+	GetUserCount() (int64, error)
 }
 
 // ProductRepositoryInterface defines methods for product repository
@@ -26,6 +28,9 @@ type ProductRepositoryInterface interface {
 	FindByCategory(categoryID uint) ([]models.Product, error)
 	UpdateStock(productID uint, quantity int) error
 	ReduceStock(productID uint, quantity int) error
+	// Report-specific methods
+	GetTopSellingProducts(limit int) ([]models.TopProduct, error)
+	GetProductCount() (int64, error)
 }
 
 // OrderRepositoryInterface defines methods for order repository
@@ -41,6 +46,13 @@ type OrderRepositoryInterface interface {
 	GetOrderStatistics() (int64, error)
 	GetDB() interface{} // For transactions
 	FindOrderItemsByOrderID(orderID uint) ([]models.OrderItem, error)
+	// Report-specific methods
+	GetRecentOrders(limit int) ([]models.Order, error)
+	GetTotalRevenue() (float64, error)
+	GetOrdersByStatus() (map[string]int64, error)
+	GetOrdersByDateRange(startDate, endDate string) ([]models.Order, error)
+	GetTopCustomers(limit int) ([]models.TopCustomer, error)
+	GetRevenueByDateRange(startDate, endDate string) (float64, error)
 }
 
 // CartRepositoryInterface defines methods for cart repository

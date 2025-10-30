@@ -81,3 +81,10 @@ func (r *UserRepository) ExistsByEmail(email string) (bool, error) {
 	err := r.db.Model(&models.User{}).Where("email = ?", email).Count(&count).Error
 	return count > 0, err
 }
+
+// GetUserCount returns the total count of users
+func (r *UserRepository) GetUserCount() (int64, error) {
+	var count int64
+	err := r.db.Model(&models.User{}).Count(&count).Error
+	return count, err
+}

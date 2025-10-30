@@ -34,14 +34,11 @@ func (r *CartRepository) FindOrCreateCart(userID uint) (*models.Cart, error) {
 	return &cart, nil
 }
 
-// FindCartByUserID finds a cart with minimal data for frontend
-// FindCartByUserID finds a cart by user ID
+// FindCartByUserID finds a cart with full product details (for order processing)
 func (r *CartRepository) FindCartByUserID(userID uint) (*models.Cart, error) {
 	var cart models.Cart
 	err := r.db.
-		// Preload("User").
 		Preload("CartItems.Product").
-		// Preload("CartItems.Product.Category").
 		Where("user_id = ?", userID).
 		First(&cart).Error
 
@@ -49,6 +46,30 @@ func (r *CartRepository) FindCartByUserID(userID uint) (*models.Cart, error) {
 		return nil, err
 	}
 	return &cart, nil
+}
+
+// FindCartBasic finds a cart with only basic information (for lightweight operations)
+func (r *CartRepository) FindCartBasic(userID uint) (*models.Cart, error) {
+	var cart models.Cart
+	err := r.db.Where("user_id = ?", userID).First(&cart).Error
+	if err != nil {
+		return nil, err
+	}
+	return &cart, nil
+}
+
+// FindCartWithCount finds a cart with item count only (for performance-critical operations)
+func (r *CartRepository) FindCartWithCount(userID uint) (*models.Cart, int64, error) {
+	var cart models.Cart
+	err := r.db.Where("user_id = ?", userID).First(&cart).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var count int64
+	countErr := r.db.Model(&models.CartItem{}).Where("cart_id = ?", cart.ID).Count(&count).Error
+
+	return &cart, count, countErr
 }
 
 // CreateCartItem creates a new cart item

@@ -147,16 +147,16 @@ func main() {
 	}
 
 	adminOrderRoutes := r.Group("/admin/orders")
-	adminOrderRoutes.Use(middleware.RequirePermission(models.PermissionReadOrder))
 	adminOrderRoutes.Use(middleware.AuthMiddleware(DB, "admin"))
+	adminOrderRoutes.Use(middleware.RequirePermission(models.PermissionReadOrder))
 	{
 		adminOrderRoutes.GET("/", handlers.GetAllOrders(orderService))
 		adminOrderRoutes.PUT("/:id/status", middleware.RequirePermission(models.PermissionUpdateOrder), handlers.UpdateOrderStatus(orderService))
 	}
 
 	feedbackRoutes := r.Group("/feedback")
-	feedbackRoutes.Use(middleware.RequirePermission(models.PermissionCreateFeedback))
 	feedbackRoutes.Use(middleware.AuthMiddleware(DB, "customer", "admin"))
+	feedbackRoutes.Use(middleware.RequirePermission(models.PermissionCreateFeedback))
 	{
 		feedbackRoutes.POST("/", handlers.GiveFeedback(feedbackService))
 	}

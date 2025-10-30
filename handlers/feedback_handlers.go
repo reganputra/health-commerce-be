@@ -3,12 +3,13 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"health-store/models"
+	"health-store/service"
+
+	"github.com/gin-gonic/gin"
 )
 
-func GiveFeedback(db *gorm.DB) gin.HandlerFunc {
+func GiveFeedback(feedbackService *service.FeedbackService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("userID").(uint)
 		var feedback models.Feedback
@@ -19,11 +20,38 @@ func GiveFeedback(db *gorm.DB) gin.HandlerFunc {
 
 		feedback.UserID = userID
 
-		if err := db.Create(&feedback).Error; err != nil {
+		err := feedbackService.CreateFeedback(&feedback)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to give feedback"})
 			return
 		}
 
-		c.JSON(http.StatusOK, feedback)
+		// Create response with selected fields
+		response := models.FeedbackResponse{
+			ID:        feedback.ID,
+			UserID:    feedback.UserID,
+			ProductID: feedback.ProductID,
+			Comment:   feedback.Comment,
+			Rating:    feedback.Rating,
+			CreatedAt: feedback.CreatedAt,
+		}
+
+		if feedback.User.ID != 0 {
+			response.User = models.UserInfo{
+				ID:       feedback.User.ID,
+				Username: feedback.User.Username,
+			}
+		}
+
+		if feedback.Product.ID != 0 {
+			response.Product = models.ProductInfo{
+				ID:          feedback.Product.ID,
+				Name:        feedback.Product.Name,
+				Description: feedback.Product.Description,
+				ImageURL:    feedback.Product.ImageURL,
+			}
+		}
+
+		c.JSON(http.StatusOK, response)
 	}
 }

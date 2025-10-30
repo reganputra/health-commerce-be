@@ -19,6 +19,7 @@ type UserRepositoryInterface interface {
 type ProductRepositoryInterface interface {
 	Create(product *models.Product) error
 	FindByID(id uint) (*models.Product, error)
+	FindByIDs(ids []uint) ([]models.Product, error)
 	Update(product *models.Product) error
 	Delete(id uint) error
 	FindAll() ([]models.Product, error)
@@ -34,6 +35,8 @@ type OrderRepositoryInterface interface {
 	FindByUserID(userID uint) ([]models.Order, error)
 	FindAll() ([]models.Order, error)
 	Update(order *models.Order) error
+	UpdateStatus(orderID uint, status string) error
+	UpdateOrderFields(orderID uint, updates map[string]interface{}) error
 	CreateOrderItem(item *models.OrderItem) error
 	GetOrderStatistics() (int64, error)
 	GetDB() interface{} // For transactions
@@ -44,6 +47,8 @@ type OrderRepositoryInterface interface {
 type CartRepositoryInterface interface {
 	FindOrCreateCart(userID uint) (*models.Cart, error)
 	FindCartByUserID(userID uint) (*models.Cart, error)
+	FindCartBasic(userID uint) (*models.Cart, error)
+	FindCartWithCount(userID uint) (*models.Cart, int64, error)
 	CreateCartItem(item *models.CartItem) error
 	FindCartItemByID(id uint) (*models.CartItem, error)
 	DeleteCartItem(id uint) error

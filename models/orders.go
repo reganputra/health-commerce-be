@@ -6,14 +6,14 @@ import (
 
 type Order struct {
 	ID            uint        `gorm:"primaryKey" json:"id"`
-	UserID        uint        `gorm:"column:user_id;not null" json:"user_id"`
+	UserID        uint        `gorm:"column:user_id;not null;index" json:"user_id"`
 	User          User        `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	OrderItems    []OrderItem `gorm:"foreignKey:OrderID" json:"items,omitempty"`
-	Status        string      `gorm:"column:status;not null" json:"status"`
+	Status        string      `gorm:"column:status;not null;index" json:"status"`
 	TotalPrice    float64     `gorm:"column:total_price;not null" json:"total_price"`
 	PaymentMethod string      `gorm:"column:payment_method;not null" json:"payment_method"`
 	BankName      string      `gorm:"column:bank_name" json:"bank_name,omitempty"`
-	CreatedAt     time.Time   `gorm:"autoCreateTime" json:"created_at"`
+	CreatedAt     time.Time   `gorm:"autoCreateTime;index" json:"created_at"`
 	UpdatedAt     time.Time   `gorm:"autoUpdateTime" json:"updated_at"`
 }
 

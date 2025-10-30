@@ -54,9 +54,19 @@ func (r *OrderRepository) FindAll() ([]models.Order, error) {
 	return orders, err
 }
 
-// Update updates an order
+// Update updates an order (updates all fields)
 func (r *OrderRepository) Update(order *models.Order) error {
 	return r.db.Save(order).Error
+}
+
+// UpdateStatus updates only the status field for better performance
+func (r *OrderRepository) UpdateStatus(orderID uint, status string) error {
+	return r.db.Model(&models.Order{}).Where("id = ?", orderID).Update("status", status).Error
+}
+
+// UpdateOrderFields updates specific fields for better performance
+func (r *OrderRepository) UpdateOrderFields(orderID uint, updates map[string]interface{}) error {
+	return r.db.Model(&models.Order{}).Where("id = ?", orderID).Updates(updates).Error
 }
 
 // CreateOrderItem creates an order item

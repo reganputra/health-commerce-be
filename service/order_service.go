@@ -46,13 +46,32 @@ func (s *OrderService) PlaceOrder(userID uint, req models.PlaceOrderRequest) (*m
 	var totalPrice float64
 	var orderItems []models.OrderItem
 
+	// Collect all product IDs for batch loading (fixes N+1 query problem)
+	productIDs := make([]uint, len(cart.CartItems))
+	for i, cartItem := range cart.CartItems {
+		productIDs[i] = cartItem.ProductID
+	}
+
+	// Batch load all products in a single query
+	products, err := s.productRepo.FindByIDs(productIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load products: %v", err)
+	}
+
+	// Create product map for efficient lookup
+	productMap := make(map[uint]*models.Product)
+	for i := range products {
+		productMap[products[i].ID] = &products[i]
+	}
+
+	// Process cart items using batch-loaded products
 	for _, cartItem := range cart.CartItems {
-		// Check stock availability
-		product, err := s.productRepo.FindByID(cartItem.ProductID)
-		if err != nil {
+		product, exists := productMap[cartItem.ProductID]
+		if !exists {
 			return nil, fmt.Errorf("product not found: %d", cartItem.ProductID)
 		}
 
+		// Check stock availability
 		if product.Stock < cartItem.Quantity {
 			return nil, fmt.Errorf("insufficient stock for product: %s (available: %d, requested: %d)",
 				product.Name, product.Stock, cartItem.Quantity)
@@ -158,7 +177,7 @@ func (s *OrderService) CancelOrder(orderID uint, userID uint) error {
 	}
 
 	order.Status = "cancelled"
-	return s.orderRepo.Update(order)
+	return s.orderRepo.UpdateStatus(order.ID, "cancelled")
 }
 
 // UpdateOrderStatus updates order status (admin only)
@@ -174,7 +193,7 @@ func (s *OrderService) UpdateOrderStatus(orderID uint, status string) error {
 	}
 
 	order.Status = status
-	return s.orderRepo.Update(order)
+	return s.orderRepo.UpdateStatus(order.ID, status)
 }
 
 // isValidStatusTransition validates order status transitions

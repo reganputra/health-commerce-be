@@ -6,9 +6,9 @@ import (
 
 type Product struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
-	CategoryID  uint      `json:"category_id"`
+	CategoryID  uint      `gorm:"index" json:"category_id"`
 	Category    Category  `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
-	Name        string    `json:"name"`
+	Name        string    `gorm:"index" json:"name"`
 	Description string    `json:"description"`
 	Price       float64   `json:"price"`
 	Stock       int       `json:"stock"`

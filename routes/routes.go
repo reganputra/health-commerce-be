@@ -21,6 +21,7 @@ func SetupRoutes(
 	cartService *service.CartService,
 	feedbackService *service.FeedbackService,
 	reportService *service.ReportService,
+	cloudinaryService *service.CloudinaryService,
 ) {
 	// Health check
 	r.GET("/ping", func(c *gin.Context) {
@@ -32,7 +33,7 @@ func SetupRoutes(
 	// Setup route groups
 	setupPublicRoutes(r, productService, categoryService)
 	setupAuthRoutes(r, userService)
-	setupAdminRoutes(r, db, userService, productService, categoryService, reportService)
+	setupAdminRoutes(r, db, userService, productService, categoryService, reportService, cloudinaryService)
 	setupCartRoutes(r, db, cartService)
 	setupOrderRoutes(r, db, orderService)
 	setupAdminOrderRoutes(r, db, orderService)
@@ -72,6 +73,7 @@ func setupAdminRoutes(
 	productService *service.ProductService,
 	categoryService *service.CategoryService,
 	reportService *service.ReportService,
+	cloudinaryService *service.CloudinaryService,
 ) {
 	adminRoutes := r.Group("/admin")
 	adminRoutes.Use(middleware.AuthMiddleware(db, "admin"))
@@ -83,11 +85,11 @@ func setupAdminRoutes(
 		adminRoutes.DELETE("/users/:id", middleware.RequirePermission(models.PermissionDeleteUser), handlers.DeleteUser(userService))
 
 		// Product management
-		adminRoutes.POST("/products", middleware.RequirePermission(models.PermissionCreateProduct), handlers.CreateProduct(productService))
+		adminRoutes.POST("/products", middleware.RequirePermission(models.PermissionCreateProduct), handlers.CreateProduct(productService, cloudinaryService))
 		adminRoutes.GET("/products", middleware.RequirePermission(models.PermissionReadProduct), handlers.GetProducts(productService))
 		adminRoutes.GET("/products/:id", middleware.RequirePermission(models.PermissionReadProduct), handlers.GetProduct(productService))
-		adminRoutes.PUT("/products/:id", middleware.RequirePermission(models.PermissionUpdateProduct), handlers.UpdateProduct(productService))
-		adminRoutes.DELETE("/products/:id", middleware.RequirePermission(models.PermissionDeleteProduct), handlers.DeleteProduct(productService))
+		adminRoutes.PUT("/products/:id", middleware.RequirePermission(models.PermissionUpdateProduct), handlers.UpdateProduct(productService, cloudinaryService))
+		adminRoutes.DELETE("/products/:id", middleware.RequirePermission(models.PermissionDeleteProduct), handlers.DeleteProduct(productService, cloudinaryService))
 
 		// Category management
 		adminRoutes.POST("/categories", middleware.RequirePermission(models.PermissionCreateCategory), handlers.CreateCategory(categoryService))

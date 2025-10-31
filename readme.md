@@ -29,6 +29,44 @@
 
 ## Quick Start
 
+### 0. Environment Setup
+
+Before running the application, configure your `.env` file:
+
+```bash
+# Copy the example env file
+cp .env.example .env
+```
+
+Edit `.env` and configure:
+
+1. **Database Settings:**
+   ```
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_USER=root
+   DB_PASSWORD=your_password
+   MYSQL_DATABASE=health-store-db
+   ```
+
+2. **JWT Secret:**
+   ```
+   JWT_SECRET_KEY=your-super-secret-jwt-key-at-least-32-characters-long
+   ```
+
+3. **Cloudinary (Required for Image Uploads):**
+
+   Get your credentials from [Cloudinary Console](https://cloudinary.com/console):
+   ```
+   CLOUDINARY_URL=cloudinary://your_api_key:your_api_secret@your_cloud_name
+   ```
+
+   **How to get Cloudinary credentials:**
+   - Sign up at https://cloudinary.com (free tier available)
+   - Go to Dashboard
+   - Copy the "API Environment variable" (it's in the format shown above)
+   - Paste it into your `.env` file
+
 ### 1. Register a New User
 
 ```javascript
@@ -319,6 +357,10 @@ POST /admin/products
 
 **Authentication:** Required (Admin role)
 
+**Content Type:** `application/json` OR `multipart/form-data`
+
+#### Option 1: JSON Request (with Image URL)
+
 **Request Body:**
 
 ```json
@@ -332,13 +374,56 @@ POST /admin/products
 }
 ```
 
+#### Option 2: Multipart Form Data (with Image Upload)
+
+Upload an image file directly to Cloudinary. The image will be automatically optimized and stored.
+
+**Form Fields:**
+
+| Field         | Type | Required | Description                              |
+| ------------- | ---- | -------- | ---------------------------------------- |
+| `category_id` | Text | Yes      | Category ID (integer)                    |
+| `name`        | Text | Yes      | Product name (2-255 chars)               |
+| `description` | Text | Yes      | Product description (10-1000 chars)      |
+| `price`       | Text | Yes      | Product price (decimal, e.g., "29.99")   |
+| `stock`       | Text | Yes      | Stock quantity (integer, e.g., "100")    |
+| `image`       | File | Yes      | Image file (JPG, PNG, etc.)              |
+
+**Postman Example:**
+
+1. Set method to `POST`
+2. URL: `http://localhost:8080/admin/products`
+3. Headers: `Authorization: Bearer YOUR_TOKEN`
+4. Body: Select `form-data`
+5. Add fields:
+   - `category_id` (Text): `2`
+   - `name` (Text): `Omega-3 Fish Oil`
+   - `description` (Text): `Premium omega-3 supplement for heart health`
+   - `price` (Text): `29.99`
+   - `stock` (Text): `100`
+   - `image` (File): Select your image file
+
+**cURL Example:**
+
+```bash
+curl -X POST http://localhost:8080/admin/products \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "category_id=2" \
+  -F "name=Omega-3 Fish Oil" \
+  -F "description=Premium omega-3 supplement for heart health" \
+  -F "price=29.99" \
+  -F "stock=100" \
+  -F "image=@/path/to/image.jpg"
+```
+
 **Validation Rules:**
 
 - `name`: 2-255 characters
 - `description`: 10-1000 characters
 - `price`: Must be greater than 0
 - `stock`: Must be >= 0
-- `image_url`: Valid URL format
+- `image_url`: Valid URL format (when using JSON)
+- `image`: Valid image file (when using multipart)
 
 **Success Response (200):**
 
@@ -350,17 +435,26 @@ POST /admin/products
   "description": "Premium omega-3 supplement for heart health",
   "price": 29.99,
   "stock": 100,
-  "image_url": "https://example.com/images/omega3.jpg",
+  "image_url": "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/health-store/products/1234567890_image.jpg",
   "created_at": "2024-01-20T14:30:00Z",
   "updated_at": "2024-01-20T14:30:00Z"
 }
 ```
 
+**Image Features:**
+
+- Automatic upload to Cloudinary
+- Image optimization (max 1000x1000px)
+- Auto quality and format selection
+- Secure HTTPS URLs
+- Images stored in `health-store/products` folder
+
 **Error Responses:**
 
-- `400` - Validation error
+- `400` - Validation error or invalid image
 - `401` - Not authenticated
 - `403` - Insufficient permissions (not admin)
+- `500` - Image upload failed
 
 ---
 
@@ -372,6 +466,10 @@ PUT /admin/products/:id
 
 **Authentication:** Required (Admin role)
 
+**Content Type:** `application/json` OR `multipart/form-data`
+
+#### Option 1: JSON Request
+
 **Request Body:** (All fields optional - partial update supported)
 
 ```json
@@ -380,6 +478,32 @@ PUT /admin/products/:id
   "price": 24.99,
   "stock": 200
 }
+```
+
+#### Option 2: Multipart Form Data (with Image Upload)
+
+Upload a new image to replace the existing one. The old image will be automatically deleted from Cloudinary.
+
+**Form Fields:** (All optional)
+
+| Field         | Type | Description                          |
+| ------------- | ---- | ------------------------------------ |
+| `category_id` | Text | New category ID                      |
+| `name`        | Text | New product name                     |
+| `description` | Text | New description                      |
+| `price`       | Text | New price                            |
+| `stock`       | Text | New stock quantity                   |
+| `image`       | File | New image file (replaces old image)  |
+
+**Postman Example:**
+
+```
+PUT http://localhost:8080/admin/products/15
+Authorization: Bearer YOUR_TOKEN
+Body: form-data
+  - name (Text): Updated Product Name
+  - price (Text): 24.99
+  - image (File): Select new image file
 ```
 
 **Success Response (200):**
@@ -392,11 +516,16 @@ PUT /admin/products/:id
   "description": "Premium omega-3 supplement for heart health",
   "price": 24.99,
   "stock": 200,
-  "image_url": "https://example.com/images/omega3.jpg",
+  "image_url": "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/health-store/products/new_image.jpg",
   "created_at": "2024-01-20T14:30:00Z",
   "updated_at": "2024-01-21T09:15:00Z"
 }
 ```
+
+**Notes:**
+
+- When uploading a new image, the old image is automatically deleted from Cloudinary
+- Partial updates are supported - only send fields you want to change
 
 ---
 
@@ -415,6 +544,11 @@ DELETE /admin/products/:id
   "message": "Product deleted successfully"
 }
 ```
+
+**Notes:**
+
+- Automatically deletes the associated image from Cloudinary
+- This operation cannot be undone
 
 **Frontend Example:**
 

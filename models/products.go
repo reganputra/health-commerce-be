@@ -19,22 +19,22 @@ type Product struct {
 
 // ProductCreateRequest represents the request payload for creating a product
 type ProductCreateRequest struct {
-	CategoryID  uint    `json:"category_id" validate:"required"`
-	Name        string  `json:"name" validate:"required,min=2,max=255"`
-	Description string  `json:"description" validate:"required,min=10,max=1000"`
-	Price       float64 `json:"price" validate:"required,gt=0"`
-	Stock       int     `json:"stock" validate:"required,gte=0"`
-	ImageURL    string  `json:"image_url" validate:"required,url"`
+	CategoryID  uint    `form:"category_id" json:"category_id" validate:"required"`
+	Name        string  `form:"name" json:"name" validate:"required,min=2,max=255"`
+	Description string  `form:"description" json:"description" validate:"required,min=10,max=1000"`
+	Price       float64 `form:"price" json:"price" validate:"required,gt=0"`
+	Stock       int     `form:"stock" json:"stock" validate:"required,gte=0"`
+	ImageURL    string  `form:"image_url" json:"image_url,omitempty" validate:"omitempty,url"`
 }
 
 // ProductUpdateRequest represents the request payload for updating a product
 type ProductUpdateRequest struct {
-	CategoryID  uint    `json:"category_id,omitempty"`
-	Name        string  `json:"name,omitempty" validate:"omitempty,min=2,max=255"`
-	Description string  `json:"description,omitempty" validate:"omitempty,min=10,max=1000"`
-	Price       float64 `json:"price,omitempty" validate:"omitempty,gt=0"`
-	Stock       int     `json:"stock,omitempty" validate:"omitempty,gte=0"`
-	ImageURL    string  `json:"image_url,omitempty" validate:"omitempty,url"`
+	CategoryID  uint    `form:"category_id" json:"category_id,omitempty"`
+	Name        string  `form:"name" json:"name,omitempty" validate:"omitempty,min=2,max=255"`
+	Description string  `form:"description" json:"description,omitempty" validate:"omitempty,min=10,max=1000"`
+	Price       float64 `form:"price" json:"price,omitempty" validate:"omitempty,gt=0"`
+	Stock       int     `form:"stock" json:"stock,omitempty" validate:"omitempty,gte=0"`
+	ImageURL    string  `form:"image_url" json:"image_url,omitempty" validate:"omitempty,url"`
 }
 
 // TopProduct represents a top-selling product for reporting

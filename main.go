@@ -83,6 +83,14 @@ func main() {
 	cartRepo := repositories.NewCartRepository(DB)
 	feedbackRepo := repositories.NewFeedbackRepository(DB)
 
+	// Initialize Cloudinary service
+	cloudinaryService, err := service.NewCloudinaryService(cfg.Storage.CloudinaryURL)
+	if err != nil {
+		utils.LogError(err, "Failed to initialize Cloudinary service")
+		log.Fatal("Failed to initialize Cloudinary service:", err)
+	}
+	utils.Info("Cloudinary service initialized successfully")
+
 	// Initialize services
 	userService := service.NewUserService(userRepo)
 	productService := service.NewProductService(productRepo, categoryRepo)
@@ -106,6 +114,7 @@ func main() {
 		cartService,
 		feedbackService,
 		reportService,
+		cloudinaryService,
 	)
 
 	fmt.Printf("Starting server on port %s...\n", cfg.Server.Port)

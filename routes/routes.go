@@ -22,6 +22,8 @@ func SetupRoutes(
 	feedbackService *service.FeedbackService,
 	reportService *service.ReportService,
 	cloudinaryService *service.CloudinaryService,
+	shopService *service.ShopService,
+	guestBookService *service.GuestBookService,
 ) {
 	// Health check
 	r.GET("/ping", func(c *gin.Context) {
@@ -33,11 +35,13 @@ func SetupRoutes(
 	// Setup route groups
 	setupPublicRoutes(r, productService, categoryService)
 	setupAuthRoutes(r, userService)
-	setupAdminRoutes(r, db, userService, productService, categoryService, reportService, cloudinaryService)
+	setupAdminRoutes(r, db, userService, productService, categoryService, reportService, cloudinaryService, shopService, guestBookService)
 	setupCartRoutes(r, db, cartService)
 	setupOrderRoutes(r, db, orderService)
 	setupAdminOrderRoutes(r, db, orderService)
 	setupFeedbackRoutes(r, db, feedbackService)
+	setupShopRoutes(r, db, shopService)
+	setupGuestBookRoutes(r, guestBookService)
 
 	// 404 handler
 	r.NoRoute(func(c *gin.Context) {
@@ -74,6 +78,8 @@ func setupAdminRoutes(
 	categoryService *service.CategoryService,
 	reportService *service.ReportService,
 	cloudinaryService *service.CloudinaryService,
+	shopService *service.ShopService,
+	guestBookService *service.GuestBookService,
 ) {
 	adminRoutes := r.Group("/admin")
 	adminRoutes.Use(middleware.AuthMiddleware(db, "admin"))
@@ -100,6 +106,18 @@ func setupAdminRoutes(
 
 		// Reports
 		adminRoutes.GET("/report", middleware.RequirePermission(models.PermissionReadReport), handlers.GenerateReport(reportService))
+
+		// Shop request management
+		adminRoutes.POST("/shop-requests", middleware.RequirePermission(models.PermissionCreateShopRequest), handlers.CreateShopRequest(shopService))
+		adminRoutes.GET("/shop-requests", middleware.RequirePermission(models.PermissionReadShopRequest), handlers.GetAllShopRequests(shopService))
+		adminRoutes.GET("/shop-requests/:id", middleware.RequirePermission(models.PermissionReadShopRequest), handlers.GetShopRequest(shopService))
+		adminRoutes.PUT("/shop-requests/:id/approve", middleware.RequirePermission(models.PermissionApproveShop), handlers.ApproveShopRequest(shopService))
+		adminRoutes.PUT("/shop-requests/:id/reject", middleware.RequirePermission(models.PermissionRejectShop), handlers.RejectShopRequest(shopService))
+
+		// GuestBook management
+		adminRoutes.GET("/guestbook", middleware.RequirePermission(models.PermissionReadGuestBook), handlers.GetAllGuestBookEntries(guestBookService))
+		adminRoutes.GET("/guestbook/:id", middleware.RequirePermission(models.PermissionReadGuestBook), handlers.GetGuestBookEntry(guestBookService))
+		adminRoutes.DELETE("/guestbook/:id", middleware.RequirePermission(models.PermissionDeleteGuestBook), handlers.DeleteGuestBookEntry(guestBookService))
 	}
 }
 
@@ -123,6 +141,7 @@ func setupOrderRoutes(r *gin.Engine, db *gorm.DB, orderService *service.OrderSer
 		orderRoutes.POST("/", middleware.RequirePermission(models.PermissionCreateOrder), handlers.PlaceOrder(orderService))
 		orderRoutes.GET("/", handlers.GetUserOrders(orderService)) // Customer order history
 		orderRoutes.GET("/:id", middleware.RequirePermission(models.PermissionReadOrder), handlers.GetOrder(orderService))
+		orderRoutes.GET("/:id/receipt", middleware.RequirePermission(models.PermissionReadOrder), handlers.GeneratePurchaseReceipt(orderService))
 		orderRoutes.PUT("/:id/cancel", middleware.RequirePermission(models.PermissionUpdateOrder), handlers.CancelOrder(orderService))
 	}
 }
@@ -145,5 +164,23 @@ func setupFeedbackRoutes(r *gin.Engine, db *gorm.DB, feedbackService *service.Fe
 	feedbackRoutes.Use(middleware.RequirePermission(models.PermissionCreateFeedback))
 	{
 		feedbackRoutes.POST("/", handlers.GiveFeedback(feedbackService))
+	}
+}
+
+// setupShopRoutes configures shop routes
+func setupShopRoutes(r *gin.Engine, db *gorm.DB, shopService *service.ShopService) {
+	shopRoutes := r.Group("/shops")
+	{
+		// Public route to view all shops
+		shopRoutes.GET("/", handlers.GetAllShops(shopService))
+	}
+}
+
+// setupGuestBookRoutes configures guest book routes
+func setupGuestBookRoutes(r *gin.Engine, guestBookService *service.GuestBookService) {
+	guestBookRoutes := r.Group("/guestbook")
+	{
+		// Public route for visitors to create entries
+		guestBookRoutes.POST("/", handlers.CreateGuestBookEntry(guestBookService))
 	}
 }

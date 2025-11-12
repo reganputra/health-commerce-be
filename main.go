@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"health-store/config"
 	"health-store/models"
@@ -12,6 +13,7 @@ import (
 	"health-store/service"
 	"health-store/utils"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/unidoc/unipdf/v3/common/license"
@@ -68,6 +70,9 @@ func main() {
 		&models.Order{},
 		&models.OrderItem{},
 		&models.Feedback{},
+		&models.ShopRequest{},
+		&models.Shop{},
+		&models.GuestBook{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)
@@ -82,6 +87,9 @@ func main() {
 	orderRepo := repositories.NewOrderRepository(DB)
 	cartRepo := repositories.NewCartRepository(DB)
 	feedbackRepo := repositories.NewFeedbackRepository(DB)
+	shopRequestRepo := repositories.NewShopRequestRepository(DB)
+	shopRepo := repositories.NewShopRepository(DB)
+	guestBookRepo := repositories.NewGuestBookRepository(DB)
 
 	// Initialize Cloudinary service
 	cloudinaryService, err := service.NewCloudinaryService(cfg.Storage.CloudinaryURL)
@@ -99,9 +107,21 @@ func main() {
 	categoryService := service.NewCategoryService(categoryRepo)
 	feedbackService := service.NewFeedbackService(feedbackRepo)
 	reportService := service.NewReportService(orderRepo, productRepo, userRepo)
+	shopService := service.NewShopService(shopRequestRepo, shopRepo)
+	guestBookService := service.NewGuestBookService(guestBookRepo)
 
 	// Initialize Gin router
 	r := gin.Default()
+
+	// Configure CORS middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173"}, // frontend URLs
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Setup all routes
 	routes.SetupRoutes(
@@ -115,6 +135,8 @@ func main() {
 		feedbackService,
 		reportService,
 		cloudinaryService,
+		shopService,
+		guestBookService,
 	)
 
 	fmt.Printf("Starting server on port %s...\n", cfg.Server.Port)

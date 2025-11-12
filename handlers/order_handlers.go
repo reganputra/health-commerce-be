@@ -144,3 +144,42 @@ func CancelOrder(orderService *service.OrderService) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "Order cancelled successfully"})
 	}
 }
+
+// GeneratePurchaseReceipt generates a PDF receipt for a customer's order
+func GeneratePurchaseReceipt(orderService *service.OrderService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.MustGet("userID").(uint)
+		orderIDStr := c.Param("id")
+		orderID, err := strconv.Atoi(orderIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order ID"})
+			return
+		}
+
+		// Get the order to verify ownership
+		order, err := orderService.GetOrderByID(uint(orderID))
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+			return
+		}
+
+		// Check if user owns the order or is admin
+		userRole := c.MustGet("userRole").(string)
+		if order.UserID != userID && userRole != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to generate receipt for this order"})
+			return
+		}
+
+		// Generate PDF
+		pdfData, err := orderService.GeneratePurchaseReceiptPDF(uint(orderID))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate PDF: " + err.Error()})
+			return
+		}
+
+		// Set headers for PDF download
+		c.Header("Content-Type", "application/pdf")
+		c.Header("Content-Disposition", "attachment; filename=purchase-receipt-"+orderIDStr+".pdf")
+		c.Data(http.StatusOK, "application/pdf", pdfData)
+	}
+}

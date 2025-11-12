@@ -38,6 +38,18 @@ const (
 
 	// Report permissions
 	PermissionReadReport Permission = "report:read"
+
+	// Shop permissions
+	PermissionCreateShopRequest Permission = "shop:create_request"
+	PermissionReadShopRequest   Permission = "shop:read_request"
+	PermissionApproveShop       Permission = "shop:approve"
+	PermissionRejectShop        Permission = "shop:reject"
+	PermissionReadShop          Permission = "shop:read"
+
+	// GuestBook permissions
+	PermissionCreateGuestBook Permission = "guestbook:create"
+	PermissionReadGuestBook   Permission = "guestbook:read"
+	PermissionDeleteGuestBook Permission = "guestbook:delete"
 )
 
 // RolePermissions maps roles to their default permissions
@@ -51,6 +63,8 @@ var RolePermissions = map[string][]Permission{
 		PermissionReadCart, PermissionUpdateCart,
 		PermissionCreateFeedback, PermissionReadFeedback,
 		PermissionReadReport,
+		PermissionCreateShopRequest, PermissionReadShopRequest, PermissionApproveShop, PermissionRejectShop, PermissionReadShop,
+		PermissionCreateGuestBook, PermissionReadGuestBook, PermissionDeleteGuestBook,
 	},
 	"customer": {
 		// Customer has limited permissions

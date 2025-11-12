@@ -331,6 +331,8 @@ GET /api/products/:id
 
 **Success Response (200):**
 
+Returns product details along with all customer feedback/reviews for this product.
+
 ```json
 {
   "id": 1,
@@ -341,14 +343,67 @@ GET /api/products/:id
   "stock": 150,
   "image_url": "https://example.com/images/vitamin-c.jpg",
   "created_at": "2024-01-15T10:30:00Z",
-  "updated_at": "2024-01-15T10:30:00Z"
+  "updated_at": "2024-01-15T10:30:00Z",
+  "feedbacks": [
+    {
+      "id": 1,
+      "userId": 5,
+      "user": {
+        "id": 5,
+        "username": "john_doe"
+      },
+      "productId": 1,
+      "comment": "Excellent product! Really helped boost my immune system.",
+      "rating": 5,
+      "createdAt": "2024-01-20T14:30:00Z"
+    },
+    {
+      "id": 2,
+      "userId": 8,
+      "user": {
+        "id": 8,
+        "username": "jane_smith"
+      },
+      "productId": 1,
+      "comment": "Good quality, will buy again.",
+      "rating": 4,
+      "createdAt": "2024-01-22T09:15:00Z"
+    }
+  ]
 }
 ```
+
+**Notes:**
+- The `feedbacks` array includes all customer reviews for this product
+- Each feedback includes the username of the customer who left the review
+- Feedbacks are sorted by creation date
+- If no feedback exists, `feedbacks` will be an empty array
 
 **Error Responses:**
 
 - `400` - Invalid product ID
 - `404` - Product not found
+
+**Frontend Example:**
+
+```javascript
+async function getProductWithFeedback(productId) {
+  const response = await fetch(`http://localhost:8080/api/products/${productId}`);
+  const product = await response.json();
+
+  console.log(`Product: ${product.name}`);
+  console.log(`Average Rating: ${calculateAverageRating(product.feedbacks)}`);
+  console.log(`Reviews: ${product.feedbacks.length}`);
+
+  return product;
+}
+
+function calculateAverageRating(feedbacks) {
+  if (feedbacks.length === 0) return 0;
+  const sum = feedbacks.reduce((acc, f) => acc + f.rating, 0);
+  return (sum / feedbacks.length).toFixed(1);
+}
+```
 
 ---
 

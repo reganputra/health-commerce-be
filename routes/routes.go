@@ -33,9 +33,9 @@ func SetupRoutes(
 	})
 
 	// Setup route groups
-	setupPublicRoutes(r, productService, categoryService)
+	setupPublicRoutes(r, productService, categoryService, feedbackService)
 	setupAuthRoutes(r, userService)
-	setupAdminRoutes(r, db, userService, productService, categoryService, reportService, cloudinaryService, shopService, guestBookService)
+	setupAdminRoutes(r, db, userService, productService, categoryService, reportService, cloudinaryService, shopService, guestBookService, feedbackService)
 	setupCartRoutes(r, db, cartService)
 	setupOrderRoutes(r, db, orderService)
 	setupAdminOrderRoutes(r, db, orderService)
@@ -50,11 +50,11 @@ func SetupRoutes(
 }
 
 // setupPublicRoutes configures public routes accessible without authentication
-func setupPublicRoutes(r *gin.Engine, productService *service.ProductService, categoryService *service.CategoryService) {
+func setupPublicRoutes(r *gin.Engine, productService *service.ProductService, categoryService *service.CategoryService, feedbackService *service.FeedbackService) {
 	publicRoutes := r.Group("/api")
 	{
 		publicRoutes.GET("/products", handlers.GetProducts(productService))
-		publicRoutes.GET("/products/:id", handlers.GetProduct(productService))
+		publicRoutes.GET("/products/:id", handlers.GetProduct(productService, feedbackService))
 		publicRoutes.GET("/categories", handlers.GetCategories(categoryService))
 		publicRoutes.GET("/categories/:id", handlers.GetCategory(categoryService))
 	}
@@ -80,6 +80,7 @@ func setupAdminRoutes(
 	cloudinaryService *service.CloudinaryService,
 	shopService *service.ShopService,
 	guestBookService *service.GuestBookService,
+	feedbackService *service.FeedbackService,
 ) {
 	adminRoutes := r.Group("/admin")
 	adminRoutes.Use(middleware.AuthMiddleware(db, "admin"))
@@ -93,7 +94,7 @@ func setupAdminRoutes(
 		// Product management
 		adminRoutes.POST("/products", middleware.RequirePermission(models.PermissionCreateProduct), handlers.CreateProduct(productService, cloudinaryService))
 		adminRoutes.GET("/products", middleware.RequirePermission(models.PermissionReadProduct), handlers.GetProducts(productService))
-		adminRoutes.GET("/products/:id", middleware.RequirePermission(models.PermissionReadProduct), handlers.GetProduct(productService))
+		adminRoutes.GET("/products/:id", middleware.RequirePermission(models.PermissionReadProduct), handlers.GetProduct(productService, feedbackService))
 		adminRoutes.PUT("/products/:id", middleware.RequirePermission(models.PermissionUpdateProduct), handlers.UpdateProduct(productService, cloudinaryService))
 		adminRoutes.DELETE("/products/:id", middleware.RequirePermission(models.PermissionDeleteProduct), handlers.DeleteProduct(productService, cloudinaryService))
 
@@ -160,10 +161,12 @@ func setupAdminOrderRoutes(r *gin.Engine, db *gorm.DB, orderService *service.Ord
 // setupFeedbackRoutes configures feedback routes
 func setupFeedbackRoutes(r *gin.Engine, db *gorm.DB, feedbackService *service.FeedbackService) {
 	feedbackRoutes := r.Group("/feedback")
-	feedbackRoutes.Use(middleware.AuthMiddleware(db, "customer", "admin"))
-	feedbackRoutes.Use(middleware.RequirePermission(models.PermissionCreateFeedback))
 	{
-		feedbackRoutes.POST("/", handlers.GiveFeedback(feedbackService))
+		// Public route to get feedback for a product
+		feedbackRoutes.GET("/product/:productId", handlers.GetProductFeedback(feedbackService))
+
+		// Protected route to submit feedback
+		feedbackRoutes.POST("/", middleware.AuthMiddleware(db, "customer", "admin"), middleware.RequirePermission(models.PermissionCreateFeedback), handlers.GiveFeedback(feedbackService))
 	}
 }
 

@@ -1,12 +1,15 @@
 package service
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"health-store/models"
 	"health-store/repositories"
 	"math/rand"
 	"time"
+
+	"github.com/unidoc/unipdf/v3/creator"
 )
 
 // OrderService handles business logic for orders
@@ -258,4 +261,193 @@ func (s *OrderService) simulatePayment(paymentMethod string) (string, error) {
 // GetOrderStatistics gets order statistics for reporting
 func (s *OrderService) GetOrderStatistics() (int64, error) {
 	return s.orderRepo.GetOrderStatistics()
+}
+
+// GeneratePurchaseReceiptPDF generates a PDF receipt for a customer's order
+func (s *OrderService) GeneratePurchaseReceiptPDF(orderID uint) ([]byte, error) {
+	// Get order with all related data (user, items, products)
+	order, err := s.orderRepo.FindByID(orderID)
+	if err != nil {
+		return nil, fmt.Errorf("order not found: %w", err)
+	}
+
+	// Create new PDF
+	c := creator.New()
+	c.SetPageMargins(50, 50, 50, 50)
+
+	// Header/Title
+	title := c.NewParagraph("PURCHASE RECEIPT")
+	title.SetFontSize(24)
+	title.SetColor(creator.ColorRGBFrom8bit(0, 51, 102))
+	title.SetMargins(0, 0, 20, 0)
+	c.Draw(title)
+
+	// Divider line
+	line := c.NewLine(50, c.Context().Y, c.Context().PageWidth-50, c.Context().Y)
+	line.SetColor(creator.ColorRGBFrom8bit(200, 200, 200))
+	line.SetLineWidth(1)
+	c.Draw(line)
+
+	spacer := c.NewParagraph("\n")
+	c.Draw(spacer)
+
+	// Customer Information Section
+	customerTitle := c.NewParagraph("Customer Information")
+	customerTitle.SetFontSize(14)
+	customerTitle.SetColor(creator.ColorRGBFrom8bit(0, 51, 102))
+	customerTitle.SetMargins(0, 0, 10, 0)
+	c.Draw(customerTitle)
+
+	// Customer details
+	customerInfo := fmt.Sprintf("Name: %s\nAddress: %s, %s\nContact Number: %s",
+		order.User.Username,
+		order.User.Address,
+		order.User.City,
+		order.User.ContactNumber)
+	customerPara := c.NewParagraph(customerInfo)
+	customerPara.SetFontSize(10)
+	customerPara.SetMargins(0, 0, 15, 0)
+	c.Draw(customerPara)
+
+	// Order Information Section
+	orderInfoTitle := c.NewParagraph("Order Information")
+	orderInfoTitle.SetFontSize(14)
+	orderInfoTitle.SetColor(creator.ColorRGBFrom8bit(0, 51, 102))
+	orderInfoTitle.SetMargins(0, 0, 10, 0)
+	c.Draw(orderInfoTitle)
+
+	orderInfo := fmt.Sprintf("Order Date: %s\nPayment Method: %s",
+		order.CreatedAt.Format("January 2, 2006 at 3:04 PM"),
+		s.formatPaymentMethod(order.PaymentMethod))
+
+	if order.BankName != "" {
+		orderInfo += fmt.Sprintf("\nBank: %s", order.BankName)
+	}
+
+	orderInfoPara := c.NewParagraph(orderInfo)
+	orderInfoPara.SetFontSize(10)
+	orderInfoPara.SetMargins(0, 0, 20, 0)
+	c.Draw(orderInfoPara)
+
+	// Items Table Section
+	itemsTitle := c.NewParagraph("Purchased Items")
+	itemsTitle.SetFontSize(14)
+	itemsTitle.SetColor(creator.ColorRGBFrom8bit(0, 51, 102))
+	itemsTitle.SetMargins(0, 0, 10, 0)
+	c.Draw(itemsTitle)
+
+	// Create table for items
+	table := c.NewTable(4)
+	table.SetColumnWidths(0.1, 0.5, 0.2, 0.2)
+
+	// Helper function to add table cells
+	addTableCell := func(table *creator.Table, text string, isHeader bool) {
+		p := c.NewParagraph(text)
+		if isHeader {
+			p.SetFontSize(11)
+			p.SetColor(creator.ColorRGBFrom8bit(255, 255, 255))
+		} else {
+			p.SetFontSize(10)
+		}
+		cell := table.NewCell()
+		if isHeader {
+			cell.SetBackgroundColor(creator.ColorRGBFrom8bit(0, 51, 102))
+		} else {
+			cell.SetBackgroundColor(creator.ColorRGBFrom8bit(245, 245, 245))
+		}
+		cell.SetBorder(creator.CellBorderSideAll, creator.CellBorderStyleSingle, 1)
+		cell.SetContent(p)
+		cell.SetHorizontalAlignment(creator.CellHorizontalAlignmentLeft)
+		cell.SetVerticalAlignment(creator.CellVerticalAlignmentMiddle)
+		p.SetMargins(5, 5, 5, 5)
+	}
+
+	// Table headers
+	addTableCell(table, "ID", true)
+	addTableCell(table, "Product Name", true)
+	addTableCell(table, "Quantity", true)
+	addTableCell(table, "Price", true)
+
+	// Table rows
+	var subtotal float64
+	for _, item := range order.OrderItems {
+		addTableCell(table, fmt.Sprintf("%d", item.ProductID), false)
+		addTableCell(table, item.Product.Name, false)
+		addTableCell(table, fmt.Sprintf("%d", item.Quantity), false)
+		itemTotal := item.Price * float64(item.Quantity)
+		addTableCell(table, fmt.Sprintf("$%.2f", itemTotal), false)
+		subtotal += itemTotal
+	}
+
+	c.Draw(table)
+
+	// Total Section
+	spacer2 := c.NewParagraph("\n")
+	c.Draw(spacer2)
+
+	totalTable := c.NewTable(2)
+	totalTable.SetColumnWidths(0.7, 0.3)
+
+	// Subtotal
+	addTableCell(totalTable, "Subtotal:", false)
+	addTableCell(totalTable, fmt.Sprintf("$%.2f", subtotal), false)
+
+	// Total (same as subtotal in this case, but you can add tax/shipping here)
+	addTotalCell := func(table *creator.Table, text string, isBold bool) {
+		p := c.NewParagraph(text)
+		p.SetFontSize(12)
+		if isBold {
+			p.SetColor(creator.ColorRGBFrom8bit(0, 51, 102))
+		}
+		cell := table.NewCell()
+		cell.SetBackgroundColor(creator.ColorRGBFrom8bit(230, 240, 255))
+		cell.SetBorder(creator.CellBorderSideAll, creator.CellBorderStyleSingle, 2)
+		cell.SetContent(p)
+		cell.SetHorizontalAlignment(creator.CellHorizontalAlignmentLeft)
+		cell.SetVerticalAlignment(creator.CellVerticalAlignmentMiddle)
+		p.SetMargins(5, 5, 5, 5)
+	}
+
+	addTotalCell(totalTable, "TOTAL:", true)
+	addTotalCell(totalTable, fmt.Sprintf("$%.2f", order.TotalPrice), true)
+
+	c.Draw(totalTable)
+
+	// Footer
+	spacer3 := c.NewParagraph("\n\n")
+	c.Draw(spacer3)
+	footer := c.NewParagraph("Thank you for your purchase!")
+	footer.SetFontSize(10)
+	footer.SetColor(creator.ColorRGBFrom8bit(100, 100, 100))
+	c.Draw(footer)
+
+	timestamp := c.NewParagraph(fmt.Sprintf("Generated on: %s", time.Now().Format("January 2, 2006 at 3:04 PM")))
+	timestamp.SetFontSize(8)
+	timestamp.SetColor(creator.ColorRGBFrom8bit(150, 150, 150))
+	c.Draw(timestamp)
+
+	// Write to buffer
+	var buf bytes.Buffer
+	err = c.Write(&buf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write PDF: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// formatPaymentMethod formats payment method for display
+func (s *OrderService) formatPaymentMethod(method string) string {
+	switch method {
+	case "cod":
+		return "Cash on Delivery"
+	case "paypal":
+		return "PayPal"
+	case "debit":
+		return "Debit Card"
+	case "cc":
+		return "Credit Card"
+	default:
+		return method
+	}
 }

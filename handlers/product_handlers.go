@@ -117,7 +117,7 @@ func GetProducts(productService *service.ProductService) gin.HandlerFunc {
 	}
 }
 
-func GetProduct(productService *service.ProductService) gin.HandlerFunc {
+func GetProduct(productService *service.ProductService, feedbackService *service.FeedbackService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 		if err != nil {
@@ -129,7 +129,35 @@ func GetProduct(productService *service.ProductService) gin.HandlerFunc {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 			return
 		}
-		c.JSON(http.StatusOK, product)
+
+		// Get feedback for this product
+		feedbacks, err := feedbackService.GetFeedbackByProductID(uint(id))
+		if err != nil {
+			// If error fetching feedback, return product without feedback
+			c.JSON(http.StatusOK, product)
+			return
+		}
+
+		// Create response with feedback
+		response := gin.H{
+			"id":          product.ID,
+			"category_id": product.CategoryID,
+			"name":        product.Name,
+			"description": product.Description,
+			"price":       product.Price,
+			"stock":       product.Stock,
+			"image_url":   product.ImageURL,
+			"created_at":  product.CreatedAt,
+			"updated_at":  product.UpdatedAt,
+			"feedbacks":   feedbacks,
+		}
+
+		// Include category if loaded
+		if product.Category.ID != 0 {
+			response["category"] = product.Category
+		}
+
+		c.JSON(http.StatusOK, response)
 	}
 }
 

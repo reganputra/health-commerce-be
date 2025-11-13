@@ -1243,6 +1243,80 @@ async function updateOrderStatus(orderId, newStatus) {
 
 ## Feedback
 
+### Get Product Feedback
+
+```http
+GET /feedback/product/:productId
+```
+
+**Authentication:** Not required (Public endpoint)
+
+**Path Parameters:**
+
+- `productId` (integer) - Product ID
+
+**Success Response (200):**
+
+Returns all feedback/reviews for a specific product.
+
+```json
+{
+  "feedbacks": [
+    {
+      "id": 1,
+      "userId": 5,
+      "user": {
+        "id": 5,
+        "username": "john_doe"
+      },
+      "productId": 1,
+      "comment": "Excellent product! Really helped boost my immune system.",
+      "rating": 5,
+      "createdAt": "2024-01-20T14:30:00Z"
+    },
+    {
+      "id": 2,
+      "userId": 8,
+      "user": {
+        "id": 8,
+        "username": "jane_smith"
+      },
+      "productId": 1,
+      "comment": "Good quality, will buy again.",
+      "rating": 4,
+      "createdAt": "2024-01-22T09:15:00Z"
+    }
+  ],
+  "count": 2
+}
+```
+
+**Notes:**
+- Returns empty array if no feedback exists for the product
+- Each feedback includes username of the reviewer
+- Feedbacks are sorted by creation date
+
+**Frontend Example:**
+
+```javascript
+async function getProductFeedback(productId) {
+  const response = await fetch(`http://localhost:8080/feedback/product/${productId}`);
+  const data = await response.json();
+
+  console.log(`Total Reviews: ${data.count}`);
+
+  // Calculate average rating
+  if (data.feedbacks.length > 0) {
+    const avgRating = data.feedbacks.reduce((sum, f) => sum + f.rating, 0) / data.feedbacks.length;
+    console.log(`Average Rating: ${avgRating.toFixed(1)}/5`);
+  }
+
+  return data;
+}
+```
+
+---
+
 ### Submit Product Feedback
 
 ```http
@@ -1253,17 +1327,20 @@ POST /feedback/
 
 **Request Body:**
 
+**IMPORTANT:** Use camelCase field names (`productId`, not `product_id`)
+
 ```json
 {
-  "product_id": 5,
+  "productId": 5,
   "comment": "Great product! Highly recommend.",
-  "rating": 5 // Integer from 1 to 5
+  "rating": 5
 }
 ```
 
 **Validation Rules:**
 
-- `rating`: Must be between 1 and 5 (inclusive)
+- `productId`: Required, must be a valid product ID
+- `rating`: Required, must be between 1 and 5 (inclusive)
 - `comment`: Required string
 
 **Success Response (200):**
@@ -1300,7 +1377,11 @@ async function submitFeedback(productId, comment, rating) {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ product_id: productId, comment, rating }),
+    body: JSON.stringify({
+      productId: productId,  // Use camelCase: productId, not product_id
+      comment: comment,
+      rating: rating
+    }),
   });
 
   if (!response.ok) {

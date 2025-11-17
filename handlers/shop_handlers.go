@@ -200,3 +200,165 @@ func GetMyShop(shopService *service.ShopService) gin.HandlerFunc {
 		c.JSON(http.StatusOK, shop)
 	}
 }
+
+// GetMyShops allows a user to view all their shops
+func GetMyShops(shopService *service.ShopService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.MustGet("userID").(uint)
+
+		shops, err := shopService.GetAllShopsByUserID(userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch shops"})
+			return
+		}
+
+		c.JSON(http.StatusOK, shops)
+	}
+}
+
+// GetShop allows viewing a specific shop by ID
+func GetShop(shopService *service.ShopService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		shopID, err := strconv.Atoi(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid shop ID"})
+			return
+		}
+
+		shop, err := shopService.GetShopByID(uint(shopID))
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Shop not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, shop)
+	}
+}
+
+// UpdateShop allows updating a shop
+func UpdateShop(shopService *service.ShopService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		shopID, err := strconv.Atoi(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid shop ID"})
+			return
+		}
+
+		var req models.ShopUpdateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Validate the request
+		if err := models.ValidateStruct(req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		shop, err := shopService.UpdateShop(uint(shopID), req.ShopName, req.Description)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Shop updated successfully",
+			"shop":    shop,
+		})
+	}
+}
+
+// DeleteShop allows deleting a shop
+func DeleteShop(shopService *service.ShopService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		shopID, err := strconv.Atoi(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid shop ID"})
+			return
+		}
+
+		err = shopService.DeleteShop(uint(shopID))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Shop deleted successfully"})
+	}
+}
+
+// ActivateShop allows activating a shop
+func ActivateShop(shopService *service.ShopService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		shopID, err := strconv.Atoi(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid shop ID"})
+			return
+		}
+
+		shop, err := shopService.ActivateShop(uint(shopID))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Shop activated successfully",
+			"shop":    shop,
+		})
+	}
+}
+
+// DeactivateShop allows deactivating a shop
+func DeactivateShop(shopService *service.ShopService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		shopID, err := strconv.Atoi(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid shop ID"})
+			return
+		}
+
+		shop, err := shopService.DeactivateShop(uint(shopID))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Shop deactivated successfully",
+			"shop":    shop,
+		})
+	}
+}
+
+// GetActiveShops allows viewing all active shops
+func GetActiveShops(shopService *service.ShopService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		shops, err := shopService.GetActiveShops()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch active shops"})
+			return
+		}
+
+		c.JSON(http.StatusOK, shops)
+	}
+}
+
+// GetInactiveShops allows viewing all inactive shops
+func GetInactiveShops(shopService *service.ShopService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		shops, err := shopService.GetInactiveShops()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch inactive shops"})
+			return
+		}
+
+		c.JSON(http.StatusOK, shops)
+	}
+}

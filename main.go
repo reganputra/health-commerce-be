@@ -30,7 +30,7 @@ func main() {
 		utils.Warn("Error loading .env file, using environment variables")
 	}
 
-	// Initialize UniDoc PDF License (optional, for removing watermarks)
+	// Initialize UniDoc PDF License 
 	if licenseKey := os.Getenv("UNIDOC_LICENSE_KEY"); licenseKey != "" {
 		err := license.SetMeteredKey(licenseKey)
 		if err != nil {
@@ -115,7 +115,7 @@ func main() {
 
 	// Configure CORS middleware
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173", "http://localhost:5000"}, // frontend URLs
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5176", "http://localhost:5000", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175"}, // frontend URLs
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},

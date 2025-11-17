@@ -52,3 +52,9 @@ type ShopRequestResponse struct {
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
+
+// ShopUpdateRequest represents the request to update a shop
+type ShopUpdateRequest struct {
+	ShopName    string `json:"shop_name" validate:"required,min=3,max=100"`
+	Description string `json:"description" validate:"required,min=10,max=500"`
+}

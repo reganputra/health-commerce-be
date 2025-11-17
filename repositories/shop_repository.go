@@ -89,7 +89,7 @@ func (r *ShopRepository) FindByID(id uint) (*models.Shop, error) {
 	return &shop, nil
 }
 
-// FindByUserID finds a shop by user ID
+// FindByUserID finds a shop by user ID (returns first shop if user has multiple)
 func (r *ShopRepository) FindByUserID(userID uint) (*models.Shop, error) {
 	var shop models.Shop
 	err := r.db.Where("user_id = ?", userID).Preload("User").First(&shop).Error
@@ -97,6 +97,13 @@ func (r *ShopRepository) FindByUserID(userID uint) (*models.Shop, error) {
 		return nil, err
 	}
 	return &shop, nil
+}
+
+// FindAllByUserID finds all shops by user ID
+func (r *ShopRepository) FindAllByUserID(userID uint) ([]models.Shop, error) {
+	var shops []models.Shop
+	err := r.db.Where("user_id = ?", userID).Preload("User").Find(&shops).Error
+	return shops, err
 }
 
 // FindAll finds all shops
@@ -121,4 +128,21 @@ func (r *ShopRepository) ExistsByUserID(userID uint) (bool, error) {
 	var count int64
 	err := r.db.Model(&models.Shop{}).Where("user_id = ?", userID).Count(&count).Error
 	return count > 0, err
+}
+
+// FindByActiveStatus finds shops by active status
+func (r *ShopRepository) FindByActiveStatus(isActive bool) ([]models.Shop, error) {
+	var shops []models.Shop
+	err := r.db.Where("is_active = ?", isActive).Preload("User").Find(&shops).Error
+	return shops, err
+}
+
+// FindActiveShops finds all active shops
+func (r *ShopRepository) FindActiveShops() ([]models.Shop, error) {
+	return r.FindByActiveStatus(true)
+}
+
+// FindInactiveShops finds all inactive shops
+func (r *ShopRepository) FindInactiveShops() ([]models.Shop, error) {
+	return r.FindByActiveStatus(false)
 }

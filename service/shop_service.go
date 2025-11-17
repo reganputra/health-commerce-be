@@ -125,3 +125,87 @@ func (s *ShopService) GetShopByID(id uint) (*models.Shop, error) {
 func (s *ShopService) GetShopByUserID(userID uint) (*models.Shop, error) {
 	return s.shopRepo.FindByUserID(userID)
 }
+
+// GetAllShopsByUserID gets all shops by user ID
+func (s *ShopService) GetAllShopsByUserID(userID uint) ([]models.Shop, error) {
+	return s.shopRepo.FindAllByUserID(userID)
+}
+
+// UpdateShop updates a shop
+func (s *ShopService) UpdateShop(shopID uint, shopName, description string) (*models.Shop, error) {
+	shop, err := s.shopRepo.FindByID(shopID)
+	if err != nil {
+		return nil, err
+	}
+
+	shop.ShopName = shopName
+	shop.Description = description
+
+	err = s.shopRepo.Update(shop)
+	if err != nil {
+		return nil, err
+	}
+
+	return shop, nil
+}
+
+// DeleteShop deletes a shop
+func (s *ShopService) DeleteShop(shopID uint) error {
+	// Check if shop exists
+	_, err := s.shopRepo.FindByID(shopID)
+	if err != nil {
+		return err
+	}
+
+	return s.shopRepo.Delete(shopID)
+}
+
+// ActivateShop activates a shop
+func (s *ShopService) ActivateShop(shopID uint) (*models.Shop, error) {
+	shop, err := s.shopRepo.FindByID(shopID)
+	if err != nil {
+		return nil, err
+	}
+
+	if shop.IsActive {
+		return nil, errors.New("shop is already active")
+	}
+
+	shop.IsActive = true
+	err = s.shopRepo.Update(shop)
+	if err != nil {
+		return nil, err
+	}
+
+	return shop, nil
+}
+
+// DeactivateShop deactivates a shop
+func (s *ShopService) DeactivateShop(shopID uint) (*models.Shop, error) {
+	shop, err := s.shopRepo.FindByID(shopID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !shop.IsActive {
+		return nil, errors.New("shop is already inactive")
+	}
+
+	shop.IsActive = false
+	err = s.shopRepo.Update(shop)
+	if err != nil {
+		return nil, err
+	}
+
+	return shop, nil
+}
+
+// GetActiveShops gets all active shops
+func (s *ShopService) GetActiveShops() ([]models.Shop, error) {
+	return s.shopRepo.FindActiveShops()
+}
+
+// GetInactiveShops gets all inactive shops
+func (s *ShopService) GetInactiveShops() ([]models.Shop, error) {
+	return s.shopRepo.FindInactiveShops()
+}

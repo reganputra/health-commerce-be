@@ -1764,6 +1764,517 @@ GET /shops
 ]
 ```
 
+**Frontend Example:**
+
+```javascript
+async function getAllShops() {
+  const response = await fetch("http://localhost:8080/shops");
+  return await response.json();
+}
+```
+
+---
+
+### Get Active Shops (Public)
+
+```http
+GET /shops/active
+```
+
+**Authentication:** Not required
+
+**Success Response (200):**
+
+Returns only shops where `is_active` is `true`.
+
+```json
+[
+  {
+    "id": 1,
+    "user_id": 2,
+    "user": {
+      "id": 2,
+      "username": "admin_user",
+      "email": "admin@example.com"
+    },
+    "shop_name": "Medical Supplies Store",
+    "description": "Professional medical equipment supplier",
+    "is_active": true,
+    "created_at": "2024-01-25T10:30:00Z",
+    "updated_at": "2024-01-25T10:30:00Z"
+  }
+]
+```
+
+**Frontend Example:**
+
+```javascript
+async function getActiveShops() {
+  const response = await fetch("http://localhost:8080/shops/active");
+  return await response.json();
+}
+```
+
+---
+
+### Get Shop by ID (Public)
+
+```http
+GET /shops/:id
+```
+
+**Authentication:** Not required
+
+**Path Parameters:**
+
+- `id` (integer) - Shop ID
+
+**Success Response (200):**
+
+```json
+{
+  "id": 1,
+  "user_id": 2,
+  "user": {
+    "id": 2,
+    "username": "admin_user",
+    "email": "admin@example.com"
+  },
+  "shop_name": "Medical Supplies Store",
+  "description": "Professional medical equipment supplier",
+  "is_active": true,
+  "created_at": "2024-01-25T10:30:00Z",
+  "updated_at": "2024-01-25T10:30:00Z"
+}
+```
+
+**Error Responses:**
+
+- `400` - Invalid shop ID
+- `404` - Shop not found
+
+**Frontend Example:**
+
+```javascript
+async function getShop(shopId) {
+  const response = await fetch(`http://localhost:8080/shops/${shopId}`);
+  if (!response.ok) {
+    throw new Error("Shop not found");
+  }
+  return await response.json();
+}
+```
+
+---
+
+### Get User's Shops (Authenticated)
+
+```http
+GET /shops/my/shops
+```
+
+**Authentication:** Required (Customer or Admin)
+
+**Success Response (200):**
+
+Returns all shops owned by the authenticated user.
+
+```json
+[
+  {
+    "id": 1,
+    "user_id": 2,
+    "user": {
+      "id": 2,
+      "username": "admin_user",
+      "email": "admin@example.com"
+    },
+    "shop_name": "Medical Supplies Store",
+    "description": "Professional medical equipment supplier",
+    "is_active": true,
+    "created_at": "2024-01-25T10:30:00Z",
+    "updated_at": "2024-01-25T10:30:00Z"
+  },
+  {
+    "id": 2,
+    "user_id": 2,
+    "user": {
+      "id": 2,
+      "username": "admin_user",
+      "email": "admin@example.com"
+    },
+    "shop_name": "Health Supplements Hub",
+    "description": "Your one-stop shop for quality supplements",
+    "is_active": true,
+    "created_at": "2024-01-26T14:00:00Z",
+    "updated_at": "2024-01-26T14:00:00Z"
+  }
+]
+```
+
+**Frontend Example:**
+
+```javascript
+async function getMyShops() {
+  const token = localStorage.getItem("authToken");
+  const response = await fetch("http://localhost:8080/shops/my/shops", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return await response.json();
+}
+```
+
+---
+
+### Get User's First Shop (Authenticated)
+
+```http
+GET /shops/my/shop
+```
+
+**Authentication:** Required (Customer or Admin)
+
+**Success Response (200):**
+
+Returns the first shop owned by the authenticated user.
+
+```json
+{
+  "id": 1,
+  "user_id": 2,
+  "user": {
+    "id": 2,
+    "username": "admin_user",
+    "email": "admin@example.com"
+  },
+  "shop_name": "Medical Supplies Store",
+  "description": "Professional medical equipment supplier",
+  "is_active": true,
+  "created_at": "2024-01-25T10:30:00Z",
+  "updated_at": "2024-01-25T10:30:00Z"
+}
+```
+
+**Error Responses:**
+
+- `404` - Shop not found (user has no shops)
+
+---
+
+### Update Shop (Authenticated)
+
+```http
+PUT /shops/:id
+```
+
+**Authentication:** Required (Customer or Admin)
+
+**Path Parameters:**
+
+- `id` (integer) - Shop ID
+
+**Request Body:**
+
+```json
+{
+  "shop_name": "Updated Shop Name",
+  "description": "Updated description for the shop"
+}
+```
+
+**Validation Rules:**
+
+- `shop_name`: 3-100 characters
+- `description`: 10-500 characters
+
+**Success Response (200):**
+
+```json
+{
+  "message": "Shop updated successfully",
+  "shop": {
+    "id": 1,
+    "user_id": 2,
+    "user": {
+      "id": 2,
+      "username": "admin_user",
+      "email": "admin@example.com"
+    },
+    "shop_name": "Updated Shop Name",
+    "description": "Updated description for the shop",
+    "is_active": true,
+    "created_at": "2024-01-25T10:30:00Z",
+    "updated_at": "2024-01-27T09:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- `400` - Validation error or invalid shop ID
+- `401` - Not authenticated
+- `404` - Shop not found
+
+**Frontend Example:**
+
+```javascript
+async function updateShop(shopId, shopName, description) {
+  const token = localStorage.getItem("authToken");
+  const response = await fetch(`http://localhost:8080/shops/${shopId}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      shop_name: shopName,
+      description: description,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error);
+  }
+
+  return await response.json();
+}
+```
+
+---
+
+### Delete Shop (Authenticated)
+
+```http
+DELETE /shops/:id
+```
+
+**Authentication:** Required (Customer or Admin)
+
+**Path Parameters:**
+
+- `id` (integer) - Shop ID
+
+**Success Response (200):**
+
+```json
+{
+  "message": "Shop deleted successfully"
+}
+```
+
+**Error Responses:**
+
+- `400` - Invalid shop ID
+- `401` - Not authenticated
+- `404` - Shop not found
+
+**Frontend Example:**
+
+```javascript
+async function deleteShop(shopId) {
+  const token = localStorage.getItem("authToken");
+  const response = await fetch(`http://localhost:8080/shops/${shopId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error);
+  }
+
+  return await response.json();
+}
+```
+
+---
+
+### Get Inactive Shops (Admin Only)
+
+```http
+GET /shops/inactive
+```
+
+**Authentication:** Required (Admin role)
+
+**Success Response (200):**
+
+Returns only shops where `is_active` is `false`.
+
+```json
+[
+  {
+    "id": 3,
+    "user_id": 5,
+    "user": {
+      "id": 5,
+      "username": "shop_owner",
+      "email": "owner@example.com"
+    },
+    "shop_name": "Inactive Store",
+    "description": "This shop is temporarily closed",
+    "is_active": false,
+    "created_at": "2024-01-20T08:00:00Z",
+    "updated_at": "2024-01-25T14:00:00Z"
+  }
+]
+```
+
+**Frontend Example:**
+
+```javascript
+async function getInactiveShops() {
+  const token = localStorage.getItem("authToken");
+  const response = await fetch("http://localhost:8080/shops/inactive", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return await response.json();
+}
+```
+
+---
+
+### Activate Shop (Admin Only)
+
+```http
+PUT /shops/:id/activate
+```
+
+**Authentication:** Required (Admin role)
+
+**Path Parameters:**
+
+- `id` (integer) - Shop ID
+
+**Success Response (200):**
+
+```json
+{
+  "message": "Shop activated successfully",
+  "shop": {
+    "id": 3,
+    "user_id": 5,
+    "user": {
+      "id": 5,
+      "username": "shop_owner",
+      "email": "owner@example.com"
+    },
+    "shop_name": "Reactivated Store",
+    "description": "Shop is now open for business",
+    "is_active": true,
+    "created_at": "2024-01-20T08:00:00Z",
+    "updated_at": "2024-01-27T10:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- `400` - Invalid shop ID
+- `401` - Not authenticated
+- `403` - Insufficient permissions (not admin)
+- `404` - Shop not found
+- `500` - Shop is already active
+
+**Frontend Example:**
+
+```javascript
+async function activateShop(shopId) {
+  const token = localStorage.getItem("authToken");
+  const response = await fetch(
+    `http://localhost:8080/shops/${shopId}/activate`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error);
+  }
+
+  return await response.json();
+}
+```
+
+---
+
+### Deactivate Shop (Admin Only)
+
+```http
+PUT /shops/:id/deactivate
+```
+
+**Authentication:** Required (Admin role)
+
+**Path Parameters:**
+
+- `id` (integer) - Shop ID
+
+**Success Response (200):**
+
+```json
+{
+  "message": "Shop deactivated successfully",
+  "shop": {
+    "id": 1,
+    "user_id": 2,
+    "user": {
+      "id": 2,
+      "username": "admin_user",
+      "email": "admin@example.com"
+    },
+    "shop_name": "Medical Supplies Store",
+    "description": "Professional medical equipment supplier",
+    "is_active": false,
+    "created_at": "2024-01-25T10:30:00Z",
+    "updated_at": "2024-01-27T11:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- `400` - Invalid shop ID
+- `401` - Not authenticated
+- `403` - Insufficient permissions (not admin)
+- `404` - Shop not found
+- `500` - Shop is already inactive
+
+**Frontend Example:**
+
+```javascript
+async function deactivateShop(shopId) {
+  const token = localStorage.getItem("authToken");
+  const response = await fetch(
+    `http://localhost:8080/shops/${shopId}/deactivate`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error);
+  }
+
+  return await response.json();
+}
+```
+
 ---
 
 ## GuestBook
@@ -2575,7 +3086,27 @@ curl http://localhost:8080/cart/ \
 
 ## Changelog
 
-### Version 1.1 (Current)
+### Version 1.2 (Current)
+
+- Enhanced Shop Management system
+  - Full CRUD operations for shops (Create via shop requests, Read, Update, Delete)
+  - Active/Inactive status management for shops
+  - Public endpoints:
+    - Get all shops
+    - Get active shops only
+    - Get shop by ID
+  - Authenticated endpoints:
+    - Get user's all shops
+    - Get user's first shop
+    - Update shop details
+    - Delete shop
+  - Admin-only endpoints:
+    - Get inactive shops
+    - Activate/Deactivate shops
+  - Support for multiple shops per user
+- Added new permissions: `shop:update` and `shop:delete`
+
+### Version 1.1
 
 - Added Shop Management system
   - Admin can create shop requests

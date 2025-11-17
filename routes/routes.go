@@ -174,8 +174,32 @@ func setupFeedbackRoutes(r *gin.Engine, db *gorm.DB, feedbackService *service.Fe
 func setupShopRoutes(r *gin.Engine, db *gorm.DB, shopService *service.ShopService) {
 	shopRoutes := r.Group("/shops")
 	{
-		// Public route to view all shops
+		// Public routes
 		shopRoutes.GET("/", handlers.GetAllShops(shopService))
+		shopRoutes.GET("/active", handlers.GetActiveShops(shopService))
+		shopRoutes.GET("/:id", handlers.GetShop(shopService))
+
+		// Protected routes for authenticated users
+		authenticated := shopRoutes.Group("")
+		authenticated.Use(middleware.AuthMiddleware(db, "customer", "admin"))
+		{
+			// Get user's own shops
+			authenticated.GET("/my/shops", handlers.GetMyShops(shopService))
+			authenticated.GET("/my/shop", handlers.GetMyShop(shopService))
+
+			// Update and delete (shop owners and admins)
+			authenticated.PUT("/:id", handlers.UpdateShop(shopService))
+			authenticated.DELETE("/:id", handlers.DeleteShop(shopService))
+		}
+
+		// Admin only routes
+		adminShops := shopRoutes.Group("")
+		adminShops.Use(middleware.AuthMiddleware(db, "admin"))
+		{
+			adminShops.GET("/inactive", middleware.RequirePermission(models.PermissionReadShop), handlers.GetInactiveShops(shopService))
+			adminShops.PUT("/:id/activate", middleware.RequirePermission(models.PermissionUpdateShop), handlers.ActivateShop(shopService))
+			adminShops.PUT("/:id/deactivate", middleware.RequirePermission(models.PermissionUpdateShop), handlers.DeactivateShop(shopService))
+		}
 	}
 }
 

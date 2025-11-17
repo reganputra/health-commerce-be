@@ -45,6 +45,8 @@ const (
 	PermissionApproveShop       Permission = "shop:approve"
 	PermissionRejectShop        Permission = "shop:reject"
 	PermissionReadShop          Permission = "shop:read"
+	PermissionUpdateShop        Permission = "shop:update"
+	PermissionDeleteShop        Permission = "shop:delete"
 
 	// GuestBook permissions
 	PermissionCreateGuestBook Permission = "guestbook:create"
@@ -63,7 +65,7 @@ var RolePermissions = map[string][]Permission{
 		PermissionReadCart, PermissionUpdateCart,
 		PermissionCreateFeedback, PermissionReadFeedback,
 		PermissionReadReport,
-		PermissionCreateShopRequest, PermissionReadShopRequest, PermissionApproveShop, PermissionRejectShop, PermissionReadShop,
+		PermissionCreateShopRequest, PermissionReadShopRequest, PermissionApproveShop, PermissionRejectShop, PermissionReadShop, PermissionUpdateShop, PermissionDeleteShop,
 		PermissionCreateGuestBook, PermissionReadGuestBook, PermissionDeleteGuestBook,
 	},
 	"customer": {
